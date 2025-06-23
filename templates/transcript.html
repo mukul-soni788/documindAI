@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Transcript Analyzer - DocuMind AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23ffffff" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #64b5f6;
+            text-decoration: none;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #64b5f6;
+            transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 4rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ffffff, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 3s ease-in-out infinite;
+        }
+
+        @keyframes textShine {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Card Styles */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInScale 0.8s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { 
+                transform: translateY(50px) scale(0.8); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 181, 246, 0.3);
+            box-shadow: 0 20px 40px rgba(100, 181, 246, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* Upload Section */
+        .upload-area {
+            border: 2px dashed rgba(100, 181, 246, 0.3);
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(100, 181, 246, 0.05);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(100, 181, 246, 0.6);
+            background: rgba(100, 181, 246, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #64b5f6;
+            background: rgba(100, 181, 246, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .analyze-button {
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .analyze-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .analyze-button:hover::before {
+            left: 100%;
+        }
+
+        .analyze-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(100, 181, 246, 0.4);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(100, 181, 246, 0.3);
+            border-top: 3px solid #64b5f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.05), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .result-item:hover::before {
+            left: 100%;
+        }
+
+        .result-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(100, 181, 246, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .result-content {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .summary-text {
+            background: rgba(100, 181, 246, 0.05);
+            border-left: 3px solid #64b5f6;
+            border-radius: 0 8px 8px 0;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            font-style: italic;
+            line-height: 1.7;
+        }
+
+        .action-items-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .action-items-list li {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            transition: all 0.3s ease;
+            position: relative;
+            padding-left: 3rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .action-items-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #10b981;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .action-items-list li:hover {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            transform: translateX(5px);
+        }
+
+        .action-item-text {
+            flex: 1;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+        }
+
+        .action-priority {
+            background: linear-gradient(45deg, #f59e0b, #d97706);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Meeting Stats */
+        .meeting-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #64b5f6, #42a5f5);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* File Info */
+        .file-info {
+            display: none;
+            background: rgba(100, 181, 246, 0.1);
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #64b5f6;
+        }
+
+        .file-details i {
+            font-size: 1.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 5rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .card {
+                padding: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .meeting-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .success-animation {
+            animation: successPulse 0.6s ease-in-out;
+        }
+
+        /* Meeting Duration Badge */
+        .duration-badge {
+            background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        /* Participants Count */
+        .participants-count {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #8b5cf6;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <i class="fas fa-brain"></i>
+                <span>DocuMind AI</span>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">Meeting Transcript Analyzer</h1>
+            <p class="hero-subtitle">
+                Upload your meeting transcripts and get comprehensive AI-powered analysis including 
+                intelligent summaries, action item extraction, key decisions, and follow-up recommendations.
+            </p>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="card" style="animation-delay: 0.2s;">
+            <div class="card-header">
+                <i class="fas fa-microphone card-icon"></i>
+                <h2 class="card-title">Upload Meeting Transcript</h2>
+            </div>
+            
+            <form id="uploadForm" class="space-y-4">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('transcriptFile').click()">
+                    <i class="fas fa-file-audio upload-icon"></i>
+                    <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: #64b5f6;">Drop your transcript here</h3>
+                    <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+                        Supports TXT, DOCX, and PDF files up to 10MB<br>
+                        <span style="font-size: 0.9rem; opacity: 0.8;">Meeting Notes • Call Transcripts • Conference Records</span>
+                    </p>
+                    <label for="transcriptFile" class="file-input-label">
+                        <i class="fas fa-folder-open" style="margin-right: 0.5rem;"></i>
+                        Choose Transcript
+                    </label>
+                </div>
+                <input type="file" id="transcriptFile" accept=".txt,.docx,.pdf" required class="file-input">
+                
+                <div class="file-info" id="fileInfo">
+                    <div class="file-details">
+                        <i class="fas fa-file-audio"></i>
+                        <div>
+                            <div id="fileName" style="font-weight: 600;"></div>
+                            <div id="fileSize" style="font-size: 0.9rem; opacity: 0.8;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="submit" class="analyze-button" id="analyzeBtn" disabled>
+                        <i class="fas fa-microphone-alt"></i>
+                        Analyze Transcript
+                    </button>
+                </div>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color: #64b5f6; font-weight: 600;">Analyzing meeting transcript...</p>
+                <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin-top: 0.5rem;">
+                    Our AI is extracting summaries, action items, and key insights
+                </p>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card" id="resultSection" style="display: none; animation-delay: 0.4s;">
+            <div class="card-header">
+                <i class="fas fa-clipboard-list card-icon"></i>
+                <h2 class="card-title">Meeting Analysis Results</h2>
+            </div>
+            
+            <div class="results-grid">
+                <!-- Meeting Summary -->
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-file-alt"></i>
+                        Meeting Summary
+                    </h3>
+                    <div class="result-content">
+                        <div class="summary-text" id="summaryText">
+                            <!-- Summary will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Items -->
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-tasks"></i>
+                        Action Items
+                        <span class="participants-count" id="actionCount" style="margin-left: auto;">
+                            <i class="fas fa-list-check"></i>
+                            <span id="actionCountText">0 Items</span>
+                        </span>
+                    </h3>
+                    <div class="result-content">
+                        <ul class="action-items-list" id="actionItemsList">
+                            <!-- Action items will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Key Decisions (if available) -->
+                <div class="result-item" id="decisionsSection" style="display: none;">
+                    <h3 class="result-title">
+                        <i class="fas fa-gavel"></i>
+                        Key Decisions
+                    </h3>
+                    <div class="result-content">
+                        <ul class="action-items-list" id="decisionsList">
+                            <!-- Key decisions will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Next Steps (if available) -->
+                <div class="result-item" id="nextStepsSection" style="display: none;">
+                    <h3 class="result-title">
+                        <i class="fas fa-arrow-right"></i>
+                        Next Steps
+                    </h3>
+                    <div class="result-content">
+                        <ul class="action-items-list" id="nextStepsList">
+                            <!-- Next steps will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;" id="downloadSection" style="display: none;">
+                <button class="analyze-button" onclick="downloadReport()">
+                    <i class="fas fa-download"></i>
+                    Download Meeting Report
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 DocuMind AI. All rights reserved. | Powered by Advanced AI Technology</p>
+        </div>
+    </footer>
+
+    <script>
+        // File handling
+        const fileInput = document.getElementById('transcriptFile');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInfo = document.getElementById('fileInfo');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const form = document.getElementById('uploadForm');
+        const resultSection = document.getElementById('resultSection');
+        const loadingDiv = document.getElementById('loading');
+        const downloadSection = document.getElementById('downloadSection');
+
+        let analysisData = null;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            
+            fileInfo.classList.add('active');
+            analyzeBtn.disabled = false;
+            
+            fileInfo.classList.add('success-animation');
+            setTimeout(() => {
+                fileInfo.classList.remove('success-animation');
+            }, 600);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            loadingDiv.classList.add('active');
+            resultSection.style.display = 'none';
+            analyzeBtn.disabled = true;
+
+            // Clear previous results
+            document.getElementById('summaryText').textContent = '';
+            document.getElementById('actionItemsList').innerHTML = '';
+
+            try {
+                const res = await fetch('/analyze-transcript', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                loadingDiv.classList.remove('active');
+
+                if (res.ok) {
+                    analysisData = data;
+                    displayResults(data);
+                } else {
+                    document.getElementById('summaryText').textContent = `Error: ${data.detail || "Something went wrong."}`;
+                    document.getElementById('summaryText').style.color = '#ef4444';
+                    resultSection.style.display = 'block';
+                }
+            } catch (error) {
+                loadingDiv.classList.remove('active');
+                document.getElementById('summaryText').textContent = `Error: ${error.message}`;
+                document.getElementById('summaryText').style.color = '#ef4444';
+                resultSection.style.display = 'block';
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            // Display summary
+            document.getElementById('summaryText').textContent = data.summary || 'No summary available.';
+            document.getElementById('summaryText').style.color = 'rgba(255, 255, 255, 0.9)';
+
+            // Display action items
+            const actionItemsList = document.getElementById('actionItemsList');
+            actionItemsList.innerHTML = '';
+            
+            if (data.action_items && data.action_items.length > 0) {
+                // Update action count
+                document.getElementById('actionCountText').textContent = `${data.action_items.length} Item${data.action_items.length !== 1 ? 's' : ''}`;
+                
+                data.action_items.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="action-item-text">${item}</div>
+                        <div class="action-priority">Action</div>
+                    `;
+                    actionItemsList.appendChild(li);
+                });
+            } else {
+                document.getElementById('actionCountText').textContent = '0 Items';
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="action-item-text" style="color: #4ade80;">No action items identified</div>
+                `;
+                actionItemsList.appendChild(li);
+            }
+
+            // Show additional sections if data is available
+            if (data.key_decisions && data.key_decisions.length > 0) {
+                const decisionsSection = document.getElementById('decisionsSection');
+                const decisionsList = document.getElementById('decisionsList');
+                decisionsList.innerHTML = '';
+                
+                data.key_decisions.forEach(decision => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="action-item-text">${decision}</div>
+                        <div class="action-priority" style="background: linear-gradient(45deg, #8b5cf6, #7c3aed);">Decision</div>
+                    `;
+                    decisionsList.appendChild(li);
+                });
+                
+                decisionsSection.style.display = 'block';
+            }
+
+            if (data.next_steps && data.next_steps.length > 0) {
+                const nextStepsSection = document.getElementById('nextStepsSection');
+                const nextStepsList = document.getElementById('nextStepsList');
+                nextStepsList.innerHTML = '';
+                
+                data.next_steps.forEach(step => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="action-item-text">${step}</div>
+                        <div class="action-priority" style="background: linear-gradient(45deg, #10b981, #059669);">Next</div>
+                    `;
+                    nextStepsList.appendChild(li);
+                });
+                
+                nextStepsSection.style.display = 'block';
+            }
+
+            // Show results and download section
+            resultSection.style.display = 'block';
+            downloadSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function downloadReport() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('jsPDF library not loaded properly.');
+                return;
+            }
+
+            if (!analysisData) {
+                alert('No analysis data available for download.');
+                return;
+            }
+
+            const doc = new window.jspdf.jsPDF();
+            const margin = 15;
+            const maxWidth = 180;
+            let y = margin;
+
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(100, 181, 246);
+            doc.text('DocuMind AI', margin, y);
+            y += 10;
+
+            doc.setFontSize(18);
+            doc.text('Meeting Transcript Analysis Report', margin, y);
+            y += 15;
+
+            // File info
+            const fileName = document.getElementById('fileName').textContent || 'Unknown Transcript';
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Transcript: ${fileName}`, margin, y);
+            y += 7;
+            doc.text(`Analysis Date: ${new Date().toLocaleDateString()}`, margin, y);
+            y += 15;
+
+            // Meeting Summary
+            doc.setFontSize(14);
+            doc.setTextColor(100, 181, 246);
+            doc.text('Meeting Summary', margin, y);
+            y += 8;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            const summary = analysisData.summary || 'No summary available.';
+            const summaryLines = doc.splitTextToSize(summary, maxWidth);
+            doc.text(summaryLines, margin, y);
+            y += summaryLines.length * 7 + 10;
+
+            // Action Items
+            if (y > 250) {
+                doc.addPage();
+                y = margin;
+            }
+
+            doc.setFontSize(14);
+            doc.setTextColor(100, 181, 246);
+            doc.text('Action Items', margin, y);
+            y += 8;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            
+            if (analysisData.action_items && analysisData.action_items.length > 0) {
+                analysisData.action_items.forEach((item, index) => {
+                    const text = `${index + 1}. ${item}`;
+                    const lines = doc.splitTextToSize(text, maxWidth);
+                    doc.text(lines, margin, y);
+                    y += lines.length * 7;
+                    
+                    // Check if we need a new page
+                    if (y > 270) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                });
+            } else {
+                doc.text('No action items identified', margin, y);
+                y += 7;
+            }
+            y += 10;
+
+            // Key Decisions (if available)
+            if (analysisData.key_decisions && analysisData.key_decisions.length > 0) {
+                if (y > 250) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setFontSize(14);
+                doc.setTextColor(100, 181, 246);
+                doc.text('Key Decisions', margin, y);
+                y += 8;
+
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                
+                analysisData.key_decisions.forEach((decision, index) => {
+                    const text = `${index + 1}. ${decision}`;
+                    const lines = doc.splitTextToSize(text, maxWidth);
+                    doc.text(lines, margin, y);
+                    y += lines.length * 7;
+                    
+                    if (y > 270) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                });
+                y += 10;
+            }
+
+            // Next Steps (if available)
+            if (analysisData.next_steps && analysisData.next_steps.length > 0) {
+                if (y > 250) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setFontSize(14);
+                doc.setTextColor(100, 181, 246);
+                doc.text('Next Steps', margin, y);
+                y += 8;
+
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                
+                analysisData.next_steps.forEach((step, index) => {
+                    const text = `${index + 1}. ${step}`;
+                    const lines = doc.splitTextToSize(text, maxWidth);
+                    doc.text(lines, margin, y);
+                    y += lines.length * 7;
+                    
+                    if (y > 270) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                });
+            }
+
+            // Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generated by DocuMind AI | © 2024', margin, pageHeight - margin);
+
+            doc.save(`DocuMind_Meeting_Analysis_${fileName.replace(/\.[^/.]+$/, "")}_Report.pdf`);
+        }
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Parallax background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.bg-animation');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Translator - DocuMind AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23ffffff" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #64b5f6;
+            text-decoration: none;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #64b5f6;
+            transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 4rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ffffff, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 3s ease-in-out infinite;
+        }
+
+        @keyframes textShine {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Card Styles */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInScale 0.8s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { 
+                transform: translateY(50px) scale(0.8); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 181, 246, 0.3);
+            box-shadow: 0 20px 40px rgba(100, 181, 246, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 2rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #64b5f6;
+            margin-bottom: 0.8rem;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(100, 181, 246, 0.3);
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(100, 181, 246, 0.05);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(100, 181, 246, 0.6);
+            background: rgba(100, 181, 246, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #64b5f6;
+            background: rgba(100, 181, 246, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .select-dropdown {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            max-height: 200px;
+        }
+
+        .select-dropdown:focus {
+            outline: none;
+            border-color: #64b5f6;
+            box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
+        }
+
+        .select-dropdown option {
+            background: #1a1a2e;
+            color: #ffffff;
+            padding: 0.5rem;
+        }
+
+        .analyze-button {
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .analyze-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .analyze-button:hover::before {
+            left: 100%;
+        }
+
+        .analyze-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(100, 181, 246, 0.4);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(100, 181, 246, 0.3);
+            border-top: 3px solid #64b5f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .result-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(100, 181, 246, 0.3);
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: space-between;
+        }
+
+        .result-content {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .translated-text-area {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .copy-button {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .copy-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .copy-button.copied {
+            background: linear-gradient(45deg, #059669, #047857);
+        }
+
+        /* File Info */
+        .file-info {
+            display: none;
+            background: rgba(100, 181, 246, 0.1);
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #64b5f6;
+        }
+
+        .file-details i {
+            font-size: 1.5rem;
+        }
+
+        /* Language Badge */
+        .language-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 5rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .card {
+                padding: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .container {
+                padding: 2rem 1rem;
+            }
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .success-animation {
+            animation: successPulse 0.6s ease-in-out;
+        }
+
+        /* Copy feedback animation */
+        .copy-feedback {
+            position: absolute;
+            top: -2rem;
+            right: 0;
+            background: #10b981;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            opacity: 0;
+            animation: fadeInOut 2s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(10px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <i class="fas fa-brain"></i>
+                <span>DocuMind AI</span>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">Document Translator</h1>
+            <p class="hero-subtitle">
+                Upload documents in any language and get professional AI-powered translation with comprehensive 
+                analysis and key insights. Supporting 100+ languages with intelligent context preservation.
+            </p>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="card" style="animation-delay: 0.2s;">
+            <div class="card-header">
+                <i class="fas fa-language card-icon"></i>
+                <h2 class="card-title">Upload & Translate Document</h2>
+            </div>
+            
+            <form id="translateForm" class="space-y-4">
+                <div class="form-group">
+                    <label class="form-label" for="file">
+                        <i class="fas fa-file-alt" style="margin-right: 0.5rem;"></i>
+                        Select Document (PDF, DOCX, TXT)
+                    </label>
+                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('file').click()">
+                        <i class="fas fa-globe-americas upload-icon"></i>
+                        <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: #64b5f6;">Drop your document here</h3>
+                        <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+                            Supports PDF, DOCX, and TXT files up to 10MB<br>
+                            <span style="font-size: 0.9rem; opacity: 0.8;">Translate to 100+ languages with AI analysis</span>
+                        </p>
+                        <label for="file" class="file-input-label">
+                            <i class="fas fa-folder-open" style="margin-right: 0.5rem;"></i>
+                            Choose Document
+                        </label>
+                    </div>
+                    <input id="file" type="file" name="file" accept=".pdf,.docx,.txt" required class="file-input">
+                    <div class="file-info" id="fileInfo">
+                        <div class="file-details">
+                            <i class="fas fa-file-alt"></i>
+                            <div>
+                                <div id="fileName" style="font-weight: 600;"></div>
+                                <div id="fileSize" style="font-size: 0.9rem; opacity: 0.8;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="language">
+                        <i class="fas fa-globe" style="margin-right: 0.5rem;"></i>
+                        Select Target Language
+                    </label>
+                    <select id="language" name="language" required class="select-dropdown">
+                        <option value="">Choose a language...</option>
+                        <option value="af">Afrikaans</option>
+                        <option value="sq">Albanian</option>
+                        <option value="am">Amharic</option>
+                        <option value="ar">Arabic</option>
+                        <option value="hy">Armenian</option>
+                        <option value="as">Assamese</option>
+                        <option value="ay">Aymara</option>
+                        <option value="az">Azerbaijani</option>
+                        <option value="bm">Bambara</option>
+                        <option value="eu">Basque</option>
+                        <option value="be">Belarusian</option>
+                        <option value="bn">Bengali</option>
+                        <option value="bho">Bhojpuri</option>
+                        <option value="bs">Bosnian</option>
+                        <option value="bg">Bulgarian</option>
+                        <option value="ca">Catalan</option>
+                        <option value="ceb">Cebuano</option>
+                        <option value="ny">Chichewa</option>
+                        <option value="zh-CN">Chinese (Simplified)</option>
+                        <option value="zh-TW">Chinese (Traditional)</option>
+                        <option value="co">Corsican</option>
+                        <option value="hr">Croatian</option>
+                        <option value="cs">Czech</option>
+                        <option value="da">Danish</option>
+                        <option value="dv">Dhivehi</option>
+                        <option value="doi">Dogri</option>
+                        <option value="nl">Dutch</option>
+                        <option value="en">English</option>
+                        <option value="eo">Esperanto</option>
+                        <option value="et">Estonian</option>
+                        <option value="ee">Ewe</option>
+                        <option value="tl">Filipino</option>
+                        <option value="fi">Finnish</option>
+                        <option value="fr">French</option>
+                        <option value="fy">Frisian</option>
+                        <option value="gl">Galician</option>
+                        <option value="ka">Georgian</option>
+                        <option value="de">German</option>
+                        <option value="el">Greek</option>
+                        <option value="gn">Guarani</option>
+                        <option value="gu">Gujarati</option>
+                        <option value="ht">Haitian Creole</option>
+                        <option value="ha">Hausa</option>
+                        <option value="haw">Hawaiian</option>
+                        <option value="iw">Hebrew</option>
+                        <option value="hi">Hindi</option>
+                        <option value="hmn">Hmong</option>
+                        <option value="hu">Hungarian</option>
+                        <option value="is">Icelandic</option>
+                        <option value="ig">Igbo</option>
+                        <option value="ilo">Ilocano</option>
+                        <option value="id">Indonesian</option>
+                        <option value="ga">Irish</option>
+                        <option value="it">Italian</option>
+                        <option value="ja">Japanese</option>
+                        <option value="jw">Javanese</option>
+                        <option value="kn">Kannada</option>
+                        <option value="kk">Kazakh</option>
+                        <option value="km">Khmer</option>
+                        <option value="rw">Kinyarwanda</option>
+                        <option value="gom">Konkani</option>
+                        <option value="ko">Korean</option>
+                        <option value="kri">Krio</option>
+                        <option value="ku">Kurdish (Kurmanji)</option>
+                        <option value="ckb">Kurdish (Sorani)</option>
+                        <option value="ky">Kyrgyz</option>
+                        <option value="lo">Lao</option>
+                        <option value="la">Latin</option>
+                        <option value="lv">Latvian</option>
+                        <option value="ln">Lingala</option>
+                        <option value="lt">Lithuanian</option>
+                        <option value="lg">Luganda</option>
+                        <option value="lb">Luxembourgish</option>
+                        <option value="mk">Macedonian</option>
+                        <option value="mg">Malagasy</option>
+                        <option value="ms">Malay</option>
+                        <option value="ml">Malayalam</option>
+                        <option value="mt">Maltese</option>
+                        <option value="mi">Maori</option>
+                        <option value="mr">Marathi</option>
+                        <option value="mni-Mtei">Meiteilon (Manipuri)</option>
+                        <option value="lus">Mizo</option>
+                        <option value="mn">Mongolian</option>
+                        <option value="my">Myanmar</option>
+                        <option value="ne">Nepali</option>
+                        <option value="no">Norwegian</option>
+                        <option value="or">Odia (Oriya)</option>
+                        <option value="om">Oromo</option>
+                        <option value="ps">Pashto</option>
+                        <option value="fa">Persian</option>
+                        <option value="pl">Polish</option>
+                        <option value="pt">Portuguese</option>
+                        <option value="pa">Punjabi</option>
+                        <option value="qu">Quechua</option>
+                        <option value="ro">Romanian</option>
+                        <option value="ru">Russian</option>
+                        <option value="sm">Samoan</option>
+                        <option value="sa">Sanskrit</option>
+                        <option value="gd">Scots Gaelic</option>
+                        <option value="nso">Sepedi</option>
+                        <option value="sr">Serbian</option>
+                        <option value="st">Sesotho</option>
+                        <option value="sn">Shona</option>
+                        <option value="sd">Sindhi</option>
+                        <option value="si">Sinhala</option>
+                        <option value="sk">Slovak</option>
+                        <option value="sl">Slovenian</option>
+                        <option value="so">Somali</option>
+                        <option value="es">Spanish</option>
+                        <option value="su">Sundanese</option>
+                        <option value="sw">Swahili</option>
+                        <option value="sv">Swedish</option>
+                        <option value="tg">Tajik</option>
+                        <option value="ta">Tamil</option>
+                        <option value="tt">Tatar</option>
+                        <option value="te">Telugu</option>
+                        <option value="th">Thai</option>
+                        <option value="ti">Tigrinya</option>
+                        <option value="ts">Tsonga</option>
+                        <option value="tr">Turkish</option>
+                        <option value="tk">Turkmen</option>
+                        <option value="ak">Twi</option>
+                        <option value="uk">Ukrainian</option>
+                        <option value="ur">Urdu</option>
+                        <option value="ug">Uyghur</option>
+                        <option value="uz">Uzbek</option>
+                        <option value="vi">Vietnamese</option>
+                        <option value="cy">Welsh</option>
+                        <option value="xh">Xhosa</option>
+                        <option value="yi">Yiddish</option>
+                        <option value="yo">Yoruba</option>
+                        <option value="zu">Zulu</option>
+                    </select>
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="submit" class="analyze-button" id="analyzeBtn" disabled>
+                        <i class="fas fa-language"></i>
+                        Translate & Analyze
+                    </button>
+                </div>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color: #64b5f6; font-weight: 600;">Translating & analyzing document...</p>
+                <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin-top: 0.5rem;">
+                    Our AI is translating and extracting insights from your document
+                </p>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card" id="output" style="display: none; animation-delay: 0.4s;">
+            <div class="card-header">
+                <i class="fas fa-globe-americas card-icon"></i>
+                <h2 class="card-title">Translation Results<span class="language-badge" id="languageBadge"></span></h2>
+            </div>
+            
+            <div class="results-grid">
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-file-alt"></i>
+                        Document Summary
+                    </h3>
+                    <div class="result-content" id="summary">
+                        <!-- Summary will be populated here -->
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Key Insights
+                    </h3>
+                    <div class="result-content">
+                        <ul id="insights" style="list-style: none; padding: 0;">
+                            <!-- Insights will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-language"></i>
+                        Translated Text
+                        <button id="copyButton" class="copy-button">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </h3>
+                    <div class="translated-text-area" id="translated_text">
+                        <!-- Translated text will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="analyze-button" onclick="downloadReport()">
+                    <i class="fas fa-download"></i>
+                    Download Report
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 DocuMind AI. All rights reserved. | Powered by Advanced AI Technology</p>
+        </div>
+    </footer>
+
+    <script>
+        // File handling
+        const fileInput = document.getElementById('file');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInfo = document.getElementById('fileInfo');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const languageSelect = document.getElementById('language');
+        const form = document.getElementById('translateForm');
+        const outputDiv = document.getElementById('output');
+        const loadingDiv = document.getElementById('loading');
+        const summaryP = document.getElementById('summary');
+        const insightsUl = document.getElementById('insights');
+        const translatedTextDiv = document.getElementById('translated_text');
+        const copyButton = document.getElementById('copyButton');
+        const languageBadge = document.getElementById('languageBadge');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        languageSelect.addEventListener('change', checkFormValidity);
+
+        function handleFileSelect(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            
+            fileInfo.classList.add('active');
+            fileInfo.classList.add('success-animation');
+            setTimeout(() => {
+                fileInfo.classList.remove('success-animation');
+            }, 600);
+            
+            checkFormValidity();
+        }
+
+        function checkFormValidity() {
+            const hasFile = fileInput.files.length > 0;
+            const hasLanguage = languageSelect.value !== '';
+            analyzeBtn.disabled = !(hasFile && hasLanguage);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submission
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            loadingDiv.classList.add('active');
+            outputDiv.style.display = 'none';
+            analyzeBtn.disabled = true;
+            
+            // Clear previous results
+            summaryP.textContent = '';
+            insightsUl.innerHTML = '';
+            translatedTextDiv.textContent = '';
+
+            try {
+                const res = await fetch('/translate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                loadingDiv.classList.remove('active');
+
+                if (res.ok) {
+                    displayResults(data);
+                } else {
+                    summaryP.innerHTML = `<span style="color: #ef4444;">Error: ${data.detail || "Something went wrong."}</span>`;
+                    outputDiv.style.display = 'block';
+                }
+            } catch (err) {
+                loadingDiv.classList.remove('active');
+                summaryP.innerHTML = `<span style="color: #ef4444;">Unexpected error: ${err.message}</span>`;
+                outputDiv.style.display = 'block';
+            } finally {
+                checkFormValidity();
+            }
+        });
+
+        function displayResults(data) {
+            // Update language badge
+            const selectedOption = languageSelect.options[languageSelect.selectedIndex];
+            languageBadge.textContent = selectedOption.text;
+
+            // Populate results
+            summaryP.textContent = data.summary || 'No summary available.';
+            translatedTextDiv.textContent = data.translated_text || 'No translation available.';
+            
+            // Populate insights
+            insightsUl.innerHTML = '';
+            if (data.insights && data.insights.length > 0) {
+                data.insights.forEach(point => {
+                    const li = document.createElement('li');
+                    li.style.cssText = 'background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246, 0.2); border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem; transition: all 0.3s ease;';
+                    li.textContent = point;
+                    li.addEventListener('mouseenter', () => {
+                        li.style.background = 'rgba(100, 181, 246, 0.15)';
+                        li.style.borderColor = 'rgba(100, 181, 246, 0.4)';
+                    });
+                    li.addEventListener('mouseleave', () => {
+                        li.style.background = 'rgba(100, 181, 246, 0.1)';
+                        li.style.borderColor = 'rgba(100, 181, 246, 0.2)';
+                    });
+                    insightsUl.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.style.cssText = 'color: #4ade80; padding: 0.8rem;';
+                li.textContent = 'No specific insights identified';
+                insightsUl.appendChild(li);
+            }
+
+            // Show results
+            outputDiv.style.display = 'block';
+            outputDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Copy functionality
+        copyButton.addEventListener('click', () => {
+            const text = translatedTextDiv.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const feedback = document.createElement('div');
+                feedback.className = 'copy-feedback';
+                feedback.textContent = 'Copied!';
+                copyButton.style.position = 'relative';
+                copyButton.appendChild(feedback);
+                
+                // Change button appearance
+                copyButton.style.background = 'linear-gradient(45deg, #059669, #047857)';
+                copyButton.innerHTML = '<i class="fas fa-check"></i> Copied';
+                
+                setTimeout(() => {
+                    copyButton.style.background = 'linear-gradient(45deg, #10b981, #059669)';
+                    copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    if (feedback.parentNode) {
+                        feedback.parentNode.removeChild(feedback);
+                    }
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy text to clipboard');
+            });
+        });
+
+        function downloadReport() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('jsPDF library not loaded properly.');
+                return;
+            }
+
+            const doc = new window.jspdf.jsPDF();
+            const margin = 15;
+            const maxWidth = 180;
+            let y = margin;
+
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(100, 181, 246);
+            doc.text('DocuMind AI', margin, y);
+            y += 10;
+
+            doc.setFontSize(18);
+            doc.text('Document Translation Report', margin, y);
+            y += 15;
+
+            // File and language info
+            const fileName = document.getElementById('fileName').textContent || 'Unknown Document';
+            const targetLanguage = languageBadge.textContent || 'Unknown Language';
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Document: ${fileName}`, margin, y);
+            y += 7;
+            doc.text(`Target Language: ${targetLanguage}`, margin, y);
+            y += 15;
+
+            // Summary
+            doc.setFontSize(14);
+            doc.setTextColor(100, 181, 246);
+            doc.text('Document Summary', margin, y);
+            y += 8;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            const summary = summaryP.textContent || 'No summary available.';
+            const summaryLines = doc.splitTextToSize(summary, maxWidth);
+            doc.text(summaryLines, margin, y);
+            y += summaryLines.length * 7 + 10;
+
+            // Key Insights
+            doc.setFontSize(14);
+            doc.setTextColor(100, 181, 246);
+            doc.text('Key Insights', margin, y);
+            y += 8;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            const insights = document.querySelectorAll('#insights li');
+            if (insights.length > 0) {
+                insights.forEach((item, index) => {
+                    const text = `${index + 1}. ${item.textContent}`;
+                    const lines = doc.splitTextToSize(text, maxWidth);
+                    doc.text(lines, margin, y);
+                    y += lines.length * 7;
+                    
+                    // Check if we need a new page
+                    if (y > 250) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                });
+            } else {
+                doc.text('No specific insights identified', margin, y);
+                y += 7;
+            }
+            y += 10;
+
+            // Translated Text
+            doc.setFontSize(14);
+            doc.setTextColor(100, 181, 246);
+            doc.text('Translated Text', margin, y);
+            y += 8;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            const translatedText = translatedTextDiv.textContent || 'No translation available.';
+            const translatedLines = doc.splitTextToSize(translatedText, maxWidth);
+            
+            // Handle long translated text with page breaks
+            translatedLines.forEach(line => {
+                if (y > 270) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(line, margin, y);
+                y += 7;
+            });
+
+            // Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generated by DocuMind AI | © 2024', margin, pageHeight - margin);
+
+            doc.save(`DocuMind_Translation_${targetLanguage}_${fileName.replace(/\.[^/.]+$/, "")}_Report.pdf`);
+        }
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Parallax background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.bg-animation');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
+        });
+    </script>
+</body>
+</html>

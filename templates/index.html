@@ -1,1 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot - DocuMind AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        html, body {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23ffffff" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        /* Chat Container */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chat-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        /* Header */
+        .chat-header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem 2rem;
+            flex-shrink: 0;
+            position: relative;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #64b5f6;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .chat-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ffffff, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            flex: 1;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #10b981;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .download-btn {
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .download-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Chat Box */
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: relative;
+        }
+
+        .chat-box::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: rgba(100, 181, 246, 0.3);
+            border-radius: 4px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 181, 246, 0.5);
+        }
+
+        /* Message Wrapper */
+        .message-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .message-wrapper.user {
+            justify-content: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-wrapper.ai {
+            justify-content: flex-start;
+        }
+
+        .message-wrapper.system {
+            justify-content: center;
+        }
+
+        /* Avatar */
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(100, 181, 246, 0.3);
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .avatar:hover {
+            border-color: rgba(100, 181, 246, 0.6);
+            transform: scale(1.1);
+        }
+
+        .avatar.user {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .avatar.user:hover {
+            border-color: rgba(16, 185, 129, 0.6);
+        }
+
+        /* Message Bubble */
+        .chat-bubble {
+            max-width: 70%;
+            padding: 1.5rem;
+            border-radius: 20px;
+            position: relative;
+            transition: all 0.3s ease;
+            word-wrap: break-word;
+            word-break: break-word;
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-bubble:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-bubble.user {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .chat-bubble.ai {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-bubble.system {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            text-align: center;
+            max-width: 80%;
+        }
+
+        /* Message Timestamp */
+        .message-timestamp {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .message-timestamp i {
+            font-size: 0.7rem;
+        }
+
+        /* Typing Animation */
+        .typing-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .typing-bubble {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 1rem 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .typing-dots .dot {
+            width: 8px;
+            height: 8px;
+            background: #64b5f6;
+            border-radius: 50%;
+            animation: typing-bounce 1.4s infinite;
+        }
+
+        .typing-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing-bounce {
+            0%, 80%, 100% { transform: scale(1); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: rgba(0, 0, 0, 0.8);
+            color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+            border: 1px solid rgba(100, 181, 246, 0.2);
+        }
+
+        .ascii-art {
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            line-height: 1;
+            white-space: pre;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(100, 181, 246, 0.8);
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-button:hover {
+            background: rgba(100, 181, 246, 1);
+            transform: scale(1.05);
+        }
+
+        /* Message Content Styling */
+        .message-content p {
+            margin: 0.5rem 0;
+            line-height: 1.6;
+        }
+
+        .message-content ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .message-content li {
+            margin: 0.3rem 0;
+            line-height: 1.5;
+        }
+
+        .message-content strong {
+            color: #64b5f6;
+            font-weight: 600;
+        }
+
+        .user .message-content strong {
+            color: #ffffff;
+        }
+
+        /* Input Container */
+        .input-container {
+            padding: 1.5rem 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 0.8rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: rgba(100, 181, 246, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 20px rgba(100, 181, 246, 0.2);
+        }
+
+        .message-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .message-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .send-button {
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Welcome Message */
+        .welcome-message {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: rgba(255, 255, 255, 0.7);
+            animation: fadeIn 1s ease-out;
+        }
+
+        .welcome-icon {
+            font-size: 4rem;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-subtitle {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .chat-header {
+                padding: 1rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .chat-title {
+                font-size: 1.5rem;
+            }
+            
+            .chat-box {
+                padding: 1rem;
+            }
+            
+            .input-container {
+                padding: 1rem;
+            }
+            
+            .chat-bubble {
+                max-width: 85%;
+                padding: 1rem;
+            }
+            
+            .header-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .download-btn {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chat-title {
+                font-size: 1.2rem;
+            }
+            
+            .send-button {
+                padding: 0.6rem 1rem;
+                font-size: 0.8rem;
+            }
+            
+            .input-wrapper {
+                padding: 0.6rem 1rem;
+            }
+            
+            .chat-bubble {
+                max-width: 90%;
+                padding: 0.8rem;
+            }
+        }
+
+        /* Connection Status */
+        .connection-status {
+            position: center;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .connection-status.connecting {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-brain"></i>
+                    <span>DocuMind AI</span>
+                </div>
+                <h1 class="chat-title">AI Chatbot</h1>
+                <div class="header-actions">
+                    <div class="status-indicator" id="connectionStatus">
+                        <div class="status-dot"></div>
+                        <span id="statusText">Connected</span>
+                    </div>
+                    <!-- Connection Status -->
+                    <!-- <div class="connection-status connecting" id="connectionStatus">
+                        <i class="fas fa-circle"></i>
+                        Connecting...
+                    </div> -->
+                    <button class="download-btn" id="downloadBtn" onclick="downloadChatHistory()">
+                        <i class="fas fa-download"></i>
+                        Download Chat
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Box -->
+        <div id="chat-box" class="chat-box">
+            <div class="welcome-message" id="welcomeMessage">
+                <div class="welcome-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h2 class="welcome-title">Welcome to DocuMind AI Chatbot</h2>
+                <p class="welcome-subtitle">
+                    Start a conversation with our AI assistant. Ask questions, request help, or even generate images by typing "generate image: [description]"
+                </p>
+            </div>
+        </div>
+
+        <!-- Input Container -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <input 
+                    id="message-input" 
+                    type="text" 
+                    class="message-input" 
+                    placeholder="Type a message or 'generate image: rocket'" 
+                    aria-label="Message input"
+                >
+                <button onclick="sendMessage()" class="send-button" id="sendBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('sendBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        
+        let isWaitingForResponse = false;
+        let chatHistory = [];
+        let isConnected = false;
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Socket.IO connected');
+            isConnected = true;
+            updateConnectionStatus('connected');
+            sendBtn.disabled = false;
+            downloadBtn.disabled = false;
+        });
+
+        socket.on('message', function(data) {
+            const { sender, message } = data;
+            appendMessage(message, sender);
+            isWaitingForResponse = false;
+            removeTypingDots();
+            
+            // Add to chat history
+            chatHistory.push({
+                sender: sender,
+                message: message,
+                timestamp: new Date()
+            });
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Socket.IO disconnected');
+            isConnected = false;
+            updateConnectionStatus('disconnected');
+            appendMessage('Connection closed.', 'system');
+            isWaitingForResponse = false;
+            removeTypingDots();
+            sendBtn.disabled = true;
+            window.parent.postMessage("ws_closed", "*");
+        });
+
+        socket.on('connect_error', function(error) {
+            console.error('Socket.IO error:', error);
+            isConnected = false;
+            updateConnectionStatus('disconnected');
+            appendMessage(`Error: ${error.message || 'Socket.IO error'}`, 'system');
+            isWaitingForResponse = false;
+            removeTypingDots();
+            sendBtn.disabled = true;
+        });
+
+        function updateConnectionStatus(status) {
+            connectionStatus.className = `connection-status ${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    connectionStatus.innerHTML = '<i class="fas fa-circle"></i> Connected';
+                    statusText.textContent = 'Connected';
+                    statusIndicator.style.background = 'rgba(16, 185, 129, 0.1)';
+                    statusIndicator.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                    statusIndicator.style.color = '#10b981';
+                    break;
+                case 'disconnected':
+                    connectionStatus.innerHTML = '<i class="fas fa-circle"></i> Disconnected';
+                    statusText.textContent = 'Disconnected';
+                    statusIndicator.style.background = 'rgba(239, 68, 68, 0.1)';
+                    statusIndicator.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                    statusIndicator.style.color = '#ef4444';
+                    break;
+                case 'connecting':
+                    connectionStatus.innerHTML = '<i class="fas fa-circle"></i> Connecting...';
+                    statusText.textContent = 'Connecting...';
+                    statusIndicator.style.background = 'rgba(245, 158, 11, 0.1)';
+                    statusIndicator.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                    statusIndicator.style.color = '#f59e0b';
+                    break;
+            }
+        }
+
+        function appendMessage(message, sender) {
+            console.log('Appending message:', message, 'from:', sender);
+            
+            // Hide welcome message on first message
+            if (welcomeMessage && chatHistory.length === 0) {
+                welcomeMessage.style.display = 'none';
+            }
+
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `message-wrapper ${sender}`;
+
+            // Create avatar
+            const avatar = document.createElement('img');
+            avatar.className = `avatar ${sender}`;
+            avatar.src = sender === 'user' 
+                ? 'https://api.dicebear.com/9.x/adventurer/svg?seed=user' 
+                : sender === 'ai'
+                ? 'https://api.dicebear.com/9.x/adventurer/svg?seed=ai'
+                : 'https://api.dicebear.com/9.x/adventurer/svg?seed=system';
+            avatar.alt = `${sender} avatar`;
+
+            // Create message bubble
+            const messageBubble = document.createElement('div');
+            messageBubble.className = `chat-bubble ${sender}`;
+
+            // Add timestamp
+            const timestamp = document.createElement('div');
+            timestamp.className = 'message-timestamp';
+            const now = new Date();
+            timestamp.innerHTML = `
+                <i class="fas fa-clock"></i>
+                ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            `;
+            messageBubble.appendChild(timestamp);
+
+            // Add message content
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            renderFormattedMessage(message, messageContent);
+            messageBubble.appendChild(messageContent);
+
+            // Add avatar and bubble to wrapper
+            if (sender === 'system') {
+                messageWrapper.appendChild(messageBubble);
+            } else {
+                messageWrapper.appendChild(avatar);
+                messageWrapper.appendChild(messageBubble);
+            }
+
+            chatBox.appendChild(messageWrapper);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function renderFormattedMessage(message, container) {
+            const parts = message.split(/(```[\w]*\n[\s\S]*?\n```)/g);
+
+            parts.forEach(part => {
+                if (part.startsWith('```') && part.endsWith('```')) {
+                    const lines = part.split('\n');
+                    const language = lines[0].replace('```', '').trim() || 'plaintext';
+                    const codeContent = lines.slice(1, -1).join('\n');
+
+                    const pre = document.createElement('pre');
+                    pre.className = language === 'plaintext' ? 'code-block ascii-art' : 'code-block';
+                    pre.textContent = codeContent;
+
+                    const copyButton = document.createElement('button');
+                    copyButton.textContent = 'Copy';
+                    copyButton.className = 'copy-button';
+                    copyButton.onclick = () => {
+                        navigator.clipboard.writeText(codeContent)
+                            .then(() => {
+                                copyButton.textContent = 'Copied!';
+                                setTimeout(() => copyButton.textContent = 'Copy', 2000);
+                            })
+                            .catch(() => {
+                                copyButton.textContent = 'Failed';
+                                setTimeout(() => copyButton.textContent = 'Copy', 2000);
+                            });
+                    };
+
+                    pre.appendChild(copyButton);
+                    container.appendChild(pre);
+                } else {
+                    const paragraphs = part.split('\n\n').filter(p => p.trim());
+                    paragraphs.forEach(paragraph => {
+                        const lines = paragraph.split('\n');
+                        let currentList = null;
+
+                        lines.forEach(line => {
+                            const listMatch = line.match(/^\d+\.\s*(.*)$/);
+                            if (listMatch) {
+                                if (!currentList) {
+                                    currentList = document.createElement('ol');
+                                    currentList.className = 'list-decimal list-inside my-2';
+                                    container.appendChild(currentList);
+                                }
+                                const listItem = document.createElement('li');
+                                listItem.innerHTML = parseInlineMarkdown(listMatch[1]);
+                                currentList.appendChild(listItem);
+                            } else {
+                                if (currentList) {
+                                    currentList = null;
+                                }
+                                if (line.trim()) {
+                                    const p = document.createElement('p');
+                                    p.innerHTML = parseInlineMarkdown(line);
+                                    container.appendChild(p);
+                                }
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        function parseInlineMarkdown(text) {
+            return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        }
+
+        function showTypingDots() {
+            const typingWrapper = document.createElement('div');
+            typingWrapper.className = 'typing-wrapper';
+            typingWrapper.id = 'typing-dots';
+
+            const avatar = document.createElement('img');
+            avatar.className = 'avatar ai';
+            avatar.src = 'https://api.dicebear.com/9.x/adventurer/svg?seed=ai';
+            avatar.alt = 'AI avatar';
+
+            const typingBubble = document.createElement('div');
+            typingBubble.className = 'typing-bubble';
+
+            const dotsContainer = document.createElement('div');
+            dotsContainer.className = 'typing-dots';
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dotsContainer.appendChild(dot);
+            }
+
+            typingBubble.appendChild(dotsContainer);
+            typingWrapper.appendChild(avatar);
+            typingWrapper.appendChild(typingBubble);
+
+            chatBox.appendChild(typingWrapper);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function removeTypingDots() {
+            const dots = document.getElementById('typing-dots');
+            if (dots) {
+                dots.remove();
+            }
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && !isWaitingForResponse && isConnected) {
+                console.log('Sending message:', message);
+                
+                // Add user message to history
+                chatHistory.push({
+                    sender: 'user',
+                    message: message,
+                    timestamp: new Date()
+                });
+                
+                appendMessage(message, 'user');
+                socket.emit('message', message);
+                messageInput.value = '';
+                isWaitingForResponse = true;
+                showTypingDots();
+                sendBtn.disabled = true;
+            }
+        }
+
+        function downloadChatHistory() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('jsPDF library not loaded properly.');
+                return;
+            }
+
+            if (chatHistory.length === 0) {
+                alert('No chat history available for download.');
+                return;
+            }
+
+            const doc = new window.jspdf.jsPDF();
+            const margin = 15;
+            const maxWidth = 180;
+            let y = margin;
+
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(100, 181, 246);
+            doc.text('DocuMind AI', margin, y);
+            y += 10;
+
+            doc.setFontSize(18);
+            doc.text('Chat History Report', margin, y);
+            y += 15;
+
+            // Chat info
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Chat Session: ${new Date().toLocaleDateString()}`, margin, y);
+            y += 7;
+            doc.text(`Total Messages: ${chatHistory.length}`, margin, y);
+            y += 7;
+            doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+            y += 15;
+
+            // Chat messages
+            doc.setFontSize(14);
+            doc.setTextColor(100, 181, 246);
+            doc.text('Conversation', margin, y);
+            y += 10;
+
+            chatHistory.forEach((chat, index) => {
+                // Check if we need a new page
+                if (y > 250) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                // Sender and timestamp
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                const timeStr = chat.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                doc.text(`${chat.sender.toUpperCase()} - ${timeStr}`, margin, y);
+                y += 7;
+
+                // Message content
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                
+                // Clean message for PDF (remove markdown and code blocks)
+                let cleanMessage = chat.message
+                    .replace(/```[\w]*\n[\s\S]*?\n```/g, '[Code Block]')
+                    .replace(/\*\*(.*?)\*\*/g, '$1');
+                
+                const lines = doc.splitTextToSize(cleanMessage, maxWidth);
+                doc.text(lines, margin + 5, y);
+                y += lines.length * 5 + 8;
+
+                // Add separator line
+                if (index < chatHistory.length - 1) {
+                    doc.setDrawColor(200, 200, 200);
+                    doc.line(margin, y, margin + maxWidth, y);
+                    y += 5;
+                }
+            });
+
+            // Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generated by DocuMind AI Chatbot | © 2024', margin, pageHeight - margin);
+
+            doc.save(`DocuMind_Chat_History_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+
+        // Event listeners
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        messageInput.addEventListener('input', function() {
+            if (!isWaitingForResponse && isConnected) {
+                sendBtn.disabled = false;
+            }
+        });
+
+        // Initialize connection status
+        updateConnectionStatus('connecting');
+
+        // Re-enable send button when response is received
+        socket.on('message', function() {
+            if (isConnected) {
+                sendBtn.disabled = false;
+            }
+        });
+
+        // Parallax background effect
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.bg-animation');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
+        });
+    </script>
+</body>
+</html>

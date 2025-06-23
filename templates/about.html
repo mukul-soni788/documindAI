@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - DocuMind AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23ffffff" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #64b5f6;
+            text-decoration: none;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: #64b5f6;
+            transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after, .nav-links a.active::after {
+            width: 100%;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 5rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(45deg, #ffffff, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 3s ease-in-out infinite;
+        }
+
+        @keyframes textShine {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Card Styles */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInScale 0.8s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { 
+                transform: translateY(50px) scale(0.8); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 181, 246, 0.3);
+            box-shadow: 0 20px 40px rgba(100, 181, 246, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-title {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .card-content {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+
+        /* Team Section */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .team-member {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .team-member::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.05), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .team-member:hover::before {
+            left: 100%;
+        }
+
+        .team-member:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 181, 246, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .team-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 1.5rem;
+            border: 3px solid rgba(100, 181, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .team-member:hover .team-avatar {
+            border-color: rgba(100, 181, 246, 0.6);
+            transform: scale(1.05);
+        }
+
+        .team-name {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .team-role {
+            font-size: 1rem;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .team-bio {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        /* Stats Section */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #64b5f6, #42a5f5);
+            color: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(100, 181, 246, 0.4);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        /* Values Section */
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .value-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .value-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.05), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .value-item:hover::before {
+            left: 100%;
+        }
+
+        .value-item:hover {
+            transform: translateY(-3px);
+            border-color: rgba(100, 181, 246, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .value-icon {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1.5rem;
+        }
+
+        .value-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 1rem;
+        }
+
+        .value-description {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-top: 5rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #64b5f6;
+            transform: translateY(-2px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .card {
+                padding: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .team-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .values-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <i class="fas fa-brain"></i>
+                <span>DocuMind AI</span>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/about" class="active">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                    <li><a href="/pricing">Pricing</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">About DocuMind AI</h1>
+            <p class="hero-subtitle">
+                Revolutionizing document analysis with cutting-edge artificial intelligence. 
+                We're building the future of intelligent document processing, one innovation at a time.
+            </p>
+        </section>
+
+        <!-- Mission Section -->
+        <section class="card" style="animation-delay: 0.2s;">
+            <div class="card-header">
+                <i class="fas fa-rocket card-icon"></i>
+                <h2 class="card-title">Our Mission</h2>
+            </div>
+            <div class="card-content">
+                <p>At DocuMind AI, we believe that every document contains valuable insights waiting to be discovered. Our mission is to democratize access to advanced document analysis capabilities, empowering businesses and individuals to extract meaningful information from their documents with unprecedented speed and accuracy.</p>
+                <br>
+                <p>We're committed to breaking down the barriers between complex AI technology and practical business applications, making sophisticated document analysis accessible to everyone, regardless of technical expertise.</p>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">1M+</span>
+                <span class="stat-label">Documents Processed</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">50K+</span>
+                <span class="stat-label">Happy Users</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">99.9%</span>
+                <span class="stat-label">Accuracy Rate</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">24/7</span>
+                <span class="stat-label">AI Processing</span>
+            </div>
+        </section>
+
+        <!-- Story Section -->
+        <section class="card" style="animation-delay: 0.4s;">
+            <div class="card-header">
+                <i class="fas fa-book-open card-icon"></i>
+                <h2 class="card-title">Our Story</h2>
+            </div>
+            <div class="card-content">
+                <p>Founded in 2023 by a team of AI researchers and document processing experts, DocuMind AI emerged from a simple observation: businesses were drowning in documents but starving for insights. Traditional document processing methods were slow, error-prone, and expensive.</p>
+                <br>
+                <p>We set out to change that by combining state-of-the-art machine learning algorithms with intuitive user interfaces. Our platform has evolved from a simple OCR tool to a comprehensive document intelligence suite that can understand context, extract relationships, and provide actionable insights.</p>
+                <br>
+                <p>Today, we're proud to serve thousands of users worldwide, from small startups to Fortune 500 companies, helping them unlock the hidden value in their document repositories.</p>
+            </div>
+        </section>
+
+        <!-- Values Section -->
+        <section class="card" style="animation-delay: 0.6s;">
+            <div class="card-header">
+                <i class="fas fa-heart card-icon"></i>
+                <h2 class="card-title">Our Values</h2>
+            </div>
+            <div class="values-grid">
+                <div class="value-item">
+                    <div class="value-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="value-title">Privacy First</h3>
+                    <p class="value-description">Your documents are yours. We implement enterprise-grade security measures and never store your sensitive data longer than necessary for processing.</p>
+                </div>
+                <div class="value-item">
+                    <div class="value-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3 class="value-title">Innovation</h3>
+                    <p class="value-description">We're constantly pushing the boundaries of what's possible with AI, investing heavily in research and development to stay ahead of the curve.</p>
+                </div>
+                <div class="value-item">
+                    <div class="value-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="value-title">User-Centric</h3>
+                    <p class="value-description">Every feature we build is designed with our users in mind. We listen to feedback and continuously improve based on real-world needs.</p>
+                </div>
+                <div class="value-item">
+                    <div class="value-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3 class="value-title">Accessibility</h3>
+                    <p class="value-description">Advanced AI shouldn't be limited to tech giants. We make powerful document analysis tools accessible to businesses of all sizes.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Section -->
+        <section class="card" style="animation-delay: 0.8s;">
+            <div class="card-header">
+                <i class="fas fa-user-friends card-icon"></i>
+                <h2 class="card-title">Meet Our Team</h2>
+            </div>
+            <div class="team-grid">
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=sarah" alt="Sarah Chen" class="team-avatar">
+                    <h3 class="team-name">Sarah Chen</h3>
+                    <p class="team-role">CEO & Co-Founder</p>
+                    <p class="team-bio">Former Google AI researcher with 10+ years in machine learning. PhD in Computer Science from Stanford. Passionate about making AI accessible to everyone.</p>
+                </div>
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=michael" alt="Michael Rodriguez" class="team-avatar">
+                    <h3 class="team-name">Michael Rodriguez</h3>
+                    <p class="team-role">CTO & Co-Founder</p>
+                    <p class="team-bio">Full-stack engineer and AI architect. Previously led engineering teams at Microsoft and Amazon. Expert in scalable AI systems and cloud infrastructure.</p>
+                </div>
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=emily" alt="Emily Johnson" class="team-avatar">
+                    <h3 class="team-name">Emily Johnson</h3>
+                    <p class="team-role">Head of Product</p>
+                    <p class="team-bio">Product strategist with experience at Slack and Dropbox. Specializes in turning complex technology into intuitive user experiences.</p>
+                </div>
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=david" alt="David Kim" class="team-avatar">
+                    <h3 class="team-name">David Kim</h3>
+                    <p class="team-role">Lead AI Engineer</p>
+                    <p class="team-bio">PhD in Natural Language Processing from MIT. Specializes in document understanding and information extraction. Published researcher in top AI conferences.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technology Section -->
+        <section class="card" style="animation-delay: 1s;">
+            <div class="card-header">
+                <i class="fas fa-cogs card-icon"></i>
+                <h2 class="card-title">Our Technology</h2>
+            </div>
+            <div class="card-content">
+                <p>DocuMind AI is built on a foundation of cutting-edge technologies:</p>
+                <br>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin: 1rem 0; padding-left: 2rem; position: relative;">
+                        <i class="fas fa-check" style="position: absolute; left: 0; top: 0.2rem; color: #64b5f6;"></i>
+                        <strong>Advanced OCR:</strong> State-of-the-art optical character recognition with 99.9% accuracy
+                    </li>
+                    <li style="margin: 1rem 0; padding-left: 2rem; position: relative;">
+                        <i class="fas fa-check" style="position: absolute; left: 0; top: 0.2rem; color: #64b5f6;"></i>
+                        <strong>Natural Language Processing:</strong> Deep understanding of document context and meaning
+                    </li>
+                    <li style="margin: 1rem 0; padding-left: 2rem; position: relative;">
+                        <i class="fas fa-check" style="position: absolute; left: 0; top: 0.2rem; color: #64b5f6;"></i>
+                        <strong>Machine Learning:</strong> Continuously improving algorithms that learn from each document
+                    </li>
+                    <li style="margin: 1rem 0; padding-left: 2rem; position: relative;">
+                        <i class="fas fa-check" style="position: absolute; left: 0; top: 0.2rem; color: #64b5f6;"></i>
+                        <strong>Cloud Infrastructure:</strong> Scalable, secure, and reliable processing powered by AWS
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="/">Home</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/pricing">Pricing</a>
+                <!-- <a href="#privacy">Privacy Policy</a>
+                <a href="#terms">Terms of Service</a> -->
+            </div>
+            <p>&copy; 2024 DocuMind AI. All rights reserved. | Powered by Advanced AI Technology</p>
+        </div>
+    </footer>
+
+    <script>
+        // Parallax background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.bg-animation');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all cards for animation
+        document.querySelectorAll('.card, .team-member, .stat-card, .value-item').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

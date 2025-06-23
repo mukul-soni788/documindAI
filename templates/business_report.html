@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Report Analyzer - DocuMind AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23ffffff" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #64b5f6;
+            text-decoration: none;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #64b5f6;
+            transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 4rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ffffff, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 3s ease-in-out infinite;
+        }
+
+        @keyframes textShine {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Card Styles */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInScale 0.8s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { 
+                transform: translateY(50px) scale(0.8); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 181, 246, 0.3);
+            box-shadow: 0 20px 40px rgba(100, 181, 246, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* Upload Section */
+        .upload-area {
+            border: 2px dashed rgba(100, 181, 246, 0.3);
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(100, 181, 246, 0.05);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(100, 181, 246, 0.6);
+            background: rgba(100, 181, 246, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #64b5f6;
+            background: rgba(100, 181, 246, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .analyze-button {
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .analyze-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .analyze-button:hover::before {
+            left: 100%;
+        }
+
+        .analyze-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(100, 181, 246, 0.4);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(100, 181, 246, 0.3);
+            border-top: 3px solid #64b5f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.05), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .result-item:hover::before {
+            left: 100%;
+        }
+
+        .result-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(100, 181, 246, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .result-content {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .result-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .result-list li {
+            background: rgba(100, 181, 246, 0.1);
+            border: 1px solid rgba(100, 181, 246, 0.2);
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            padding-left: 2.5rem;
+        }
+
+        .result-list li::before {
+            content: '•';
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64b5f6;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .result-list li:hover {
+            background: rgba(100, 181, 246, 0.15);
+            border-color: rgba(100, 181, 246, 0.4);
+            transform: translateX(5px);
+        }
+
+        /* SWOT Analysis Specific Styles */
+        .swot-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .swot-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .swot-strengths {
+            border-left: 4px solid #10b981;
+        }
+
+        .swot-weaknesses {
+            border-left: 4px solid #ef4444;
+        }
+
+        .swot-opportunities {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .swot-threats {
+            border-left: 4px solid #8b5cf6;
+        }
+
+        .swot-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .swot-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .swot-strengths .swot-title {
+            color: #10b981;
+        }
+
+        .swot-weaknesses .swot-title {
+            color: #ef4444;
+        }
+
+        .swot-opportunities .swot-title {
+            color: #f59e0b;
+        }
+
+        .swot-threats .swot-title {
+            color: #8b5cf6;
+        }
+
+        .swot-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .swot-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .swot-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* File Info */
+        .file-info {
+            display: none;
+            background: rgba(100, 181, 246, 0.1);
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #64b5f6;
+        }
+
+        .file-details i {
+            font-size: 1.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 5rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .card {
+                padding: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .swot-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .success-animation {
+            animation: successPulse 0.6s ease-in-out;
+        }
+
+        /* Business Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #64b5f6, #42a5f5);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <i class="fas fa-brain"></i>
+                <span>DocuMind AI</span>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">Business Report Analyzer</h1>
+            <p class="hero-subtitle">
+                Upload your financial or marketing reports and get comprehensive AI-powered analysis including 
+                key performance indicators, SWOT analysis, growth opportunities, and strategic recommendations.
+            </p>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="card" style="animation-delay: 0.2s;">
+            <div class="card-header">
+                <i class="fas fa-chart-line card-icon"></i>
+                <h2 class="card-title">Upload Business Report</h2>
+            </div>
+            
+            <form id="uploadForm" class="space-y-4">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-file-chart-line upload-icon"></i>
+                    <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: #64b5f6;">Drop your business report here</h3>
+                    <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+                        Supports PDF, DOCX, and TXT files up to 10MB<br>
+                        <span style="font-size: 0.9rem; opacity: 0.8;">Financial Reports • Marketing Analysis • Business Plans</span>
+                    </p>
+                    <label for="fileInput" class="file-input-label">
+                        <i class="fas fa-folder-open" style="margin-right: 0.5rem;"></i>
+                        Choose Report
+                    </label>
+                </div>
+                <input type="file" id="fileInput" required class="file-input">
+                
+                <div class="file-info" id="fileInfo">
+                    <div class="file-details">
+                        <i class="fas fa-file-chart-line"></i>
+                        <div>
+                            <div id="fileName" style="font-weight: 600;"></div>
+                            <div id="fileSize" style="font-size: 0.9rem; opacity: 0.8;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="submit" class="analyze-button" id="analyzeBtn" disabled>
+                        <i class="fas fa-chart-bar"></i>
+                        Analyze Report
+                    </button>
+                </div>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color: #64b5f6; font-weight: 600;">Analyzing business report...</p>
+                <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin-top: 0.5rem;">
+                    Our AI is extracting KPIs, trends, and strategic insights
+                </p>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card" id="result" style="display: none; animation-delay: 0.4s;">
+            <div class="card-header">
+                <i class="fas fa-analytics card-icon"></i>
+                <h2 class="card-title">Business Analysis Results</h2>
+            </div>
+            
+            <div class="results-grid">
+                <!-- Key Financial Indicators -->
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-chart-pie"></i>
+                        Key Financial Indicators
+                    </h3>
+                    <div class="result-content">
+                        <ul class="result-list" id="keyIndicators">
+                            <!-- Key indicators will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- SWOT Analysis -->
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-balance-scale"></i>
+                        SWOT Analysis
+                    </h3>
+                    <div class="swot-section">
+                        <div class="swot-item swot-strengths">
+                            <div class="swot-title">
+                                <i class="fas fa-thumbs-up"></i>
+                                Strengths
+                            </div>
+                            <ul class="swot-list" id="swotStrengths">
+                                <!-- Strengths will be populated here -->
+                            </ul>
+                        </div>
+                        <div class="swot-item swot-weaknesses">
+                            <div class="swot-title">
+                                <i class="fas fa-thumbs-down"></i>
+                                Weaknesses
+                            </div>
+                            <ul class="swot-list" id="swotWeaknesses">
+                                <!-- Weaknesses will be populated here -->
+                            </ul>
+                        </div>
+                        <div class="swot-item swot-opportunities">
+                            <div class="swot-title">
+                                <i class="fas fa-lightbulb"></i>
+                                Opportunities
+                            </div>
+                            <ul class="swot-list" id="swotOpportunities">
+                                <!-- Opportunities will be populated here -->
+                            </ul>
+                        </div>
+                        <div class="swot-item swot-threats">
+                            <div class="swot-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Threats
+                            </div>
+                            <ul class="swot-list" id="swotThreats">
+                                <!-- Threats will be populated here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Growth Opportunities -->
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-rocket"></i>
+                        Growth Opportunities
+                    </h3>
+                    <div class="result-content">
+                        <ul class="result-list" id="growthOpportunities">
+                            <!-- Growth opportunities will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-bullseye"></i>
+                        Strategic Recommendations
+                    </h3>
+                    <div class="result-content">
+                        <ul class="result-list" id="recommendations">
+                            <!-- Recommendations will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;" id="downloadSection" style="display: none;">
+                <button class="analyze-button" onclick="downloadReport()">
+                    <i class="fas fa-download"></i>
+                    Download Business Analysis Report
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 DocuMind AI. All rights reserved. | Powered by Advanced AI Technology</p>
+        </div>
+    </footer>
+
+    <script>
+        // File handling
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInfo = document.getElementById('fileInfo');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const form = document.getElementById('uploadForm');
+        const resultDiv = document.getElementById('result');
+        const loadingDiv = document.getElementById('loading');
+        const downloadSection = document.getElementById('downloadSection');
+
+        let analysisData = null;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            
+            fileInfo.classList.add('active');
+            analyzeBtn.disabled = false;
+            
+            fileInfo.classList.add('success-animation');
+            setTimeout(() => {
+                fileInfo.classList.remove('success-animation');
+            }, 600);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            loadingDiv.classList.add('active');
+            resultDiv.style.display = 'none';
+            analyzeBtn.disabled = true;
+
+            try {
+                const res = await fetch('/analyze-business-report', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                loadingDiv.classList.remove('active');
+
+                if (res.ok) {
+                    analysisData = data;
+                    displayResults(data);
+                } else {
+                    document.getElementById('keyIndicators').innerHTML = `<li style="color: #ef4444;">Error: ${data.detail || "Unexpected error."}</li>`;
+                    resultDiv.style.display = 'block';
+                }
+            } catch (error) {
+                loadingDiv.classList.remove('active');
+                document.getElementById('keyIndicators').innerHTML = `<li style="color: #ef4444;">Error: ${error.message}</li>`;
+                resultDiv.style.display = 'block';
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            // Helper function to populate lists
+            const populateList = (elementId, items) => {
+                const element = document.getElementById(elementId);
+                element.innerHTML = '';
+                if (items && items.length > 0) {
+                    items.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        element.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No items identified';
+                    li.style.color = '#4ade80';
+                    element.appendChild(li);
+                }
+            };
+
+            // Populate all sections
+            populateList('keyIndicators', data.key_indicators);
+            populateList('swotStrengths', data.swot?.strengths);
+            populateList('swotWeaknesses', data.swot?.weaknesses);
+            populateList('swotOpportunities', data.swot?.opportunities);
+            populateList('swotThreats', data.swot?.threats);
+            populateList('growthOpportunities', data.growth_opportunities);
+            populateList('recommendations', data.recommendations);
+
+            // Show results and download section
+            resultDiv.style.display = 'block';
+            downloadSection.style.display = 'block';
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function downloadReport() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('jsPDF library not loaded properly.');
+                return;
+            }
+
+            if (!analysisData) {
+                alert('No analysis data available for download.');
+                return;
+            }
+
+            const doc = new window.jspdf.jsPDF();
+            const margin = 15;
+            const maxWidth = 180;
+            let y = margin;
+
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(100, 181, 246);
+            doc.text('DocuMind AI', margin, y);
+            y += 10;
+
+            doc.setFontSize(18);
+            doc.text('Business Analysis Report', margin, y);
+            y += 15;
+
+            // File info
+            const fileName = document.getElementById('fileName').textContent || 'Unknown Report';
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Report: ${fileName}`, margin, y);
+            y += 15;
+
+            // Helper function to add section
+            function addSection(title, items) {
+                // Check if we need a new page
+                if (y > 250) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setFontSize(14);
+                doc.setTextColor(100, 181, 246);
+                doc.text(title, margin, y);
+                y += 8;
+
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                
+                if (items && items.length > 0) {
+                    items.forEach((item, index) => {
+                        const text = `${index + 1}. ${item}`;
+                        const lines = doc.splitTextToSize(text, maxWidth);
+                        doc.text(lines, margin, y);
+                        y += lines.length * 7;
+                        
+                        // Check if we need a new page
+                        if (y > 270) {
+                            doc.addPage();
+                            y = margin;
+                        }
+                    });
+                } else {
+                    doc.text('No items identified', margin, y);
+                    y += 7;
+                }
+                y += 10;
+            }
+
+            // Add all sections
+            addSection('Key Financial Indicators', analysisData.key_indicators);
+            
+            // SWOT Analysis
+            if (analysisData.swot) {
+                addSection('SWOT Analysis - Strengths', analysisData.swot.strengths);
+                addSection('SWOT Analysis - Weaknesses', analysisData.swot.weaknesses);
+                addSection('SWOT Analysis - Opportunities', analysisData.swot.opportunities);
+                addSection('SWOT Analysis - Threats', analysisData.swot.threats);
+            }
+            
+            addSection('Growth Opportunities', analysisData.growth_opportunities);
+            addSection('Strategic Recommendations', analysisData.recommendations);
+
+            // Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generated by DocuMind AI | © 2024', margin, pageHeight - margin);
+
+            doc.save(`DocuMind_Business_Analysis_${fileName.replace(/\.[^/.]+$/, "")}_Report.pdf`);
+        }
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Parallax background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.bg-animation');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
+        });
+    </script>
+</body>
+</html>

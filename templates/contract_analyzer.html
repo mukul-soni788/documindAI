@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Analyzer - DocuMind AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23ffffff" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(1deg); }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #64b5f6;
+            text-decoration: none;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #64b5f6;
+            transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 4rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ffffff, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 3s ease-in-out infinite;
+        }
+
+        @keyframes textShine {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Card Styles */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInScale 0.8s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { 
+                transform: translateY(50px) scale(0.8); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 181, 246, 0.3);
+            box-shadow: 0 20px 40px rgba(100, 181, 246, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* Upload Section */
+        .upload-area {
+            border: 2px dashed rgba(100, 181, 246, 0.3);
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(100, 181, 246, 0.05);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(100, 181, 246, 0.6);
+            background: rgba(100, 181, 246, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #64b5f6;
+            background: rgba(100, 181, 246, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 181, 246, 0.3);
+        }
+
+        .analyze-button {
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .analyze-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .analyze-button:hover::before {
+            left: 100%;
+        }
+
+        .analyze-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(100, 181, 246, 0.4);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(100, 181, 246, 0.3);
+            border-top: 3px solid #64b5f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .result-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(100, 181, 246, 0.3);
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #64b5f6;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .result-content {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .result-content strong {
+            color: #64b5f6;
+        }
+
+        .result-content p {
+            margin-bottom: 0.8rem;
+        }
+
+        /* File Info */
+        .file-info {
+            display: none;
+            background: rgba(100, 181, 246, 0.1);
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #64b5f6;
+        }
+
+        .file-details i {
+            font-size: 1.5rem;
+        }
+
+        /* Chatbot Styles */
+        #chatbot-iframe {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 300px;
+            height: 500px;
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        #chatbot-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #64b5f6, #42a5f5);
+            color: white;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(100, 181, 246, 0.3);
+            cursor: pointer;
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+
+        #chatbot-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(100, 181, 246, 0.4);
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            text-align: center;
+            margin-top: 5rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Risk Level Indicators */
+        .risk-high {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+
+        .risk-medium {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+
+        .risk-low {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.5rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .card {
+                padding: 2rem;
+            }
+            
+            .upload-area {
+                padding: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            #chatbot-iframe {
+                width: 280px;
+                height: 450px;
+                right: 10px;
+                bottom: 80px;
+            }
+
+            #chatbot-toggle-btn {
+                right: 10px;
+                bottom: 10px;
+            }
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .success-animation {
+            animation: successPulse 0.6s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <i class="fas fa-brain"></i>
+                <span>DocuMind AI</span>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">Contract Analyzer</h1>
+            <p class="hero-subtitle">
+                Upload your legal, HR, or real estate contracts and get comprehensive AI-powered analysis including 
+                key clauses identification, risk assessment, obligation mapping, and strategic negotiation recommendations.
+            </p>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="card" style="animation-delay: 0.2s;">
+            <div class="card-header">
+                <i class="fas fa-handshake card-icon"></i>
+                <h2 class="card-title">Upload Contract</h2>
+            </div>
+            
+            <form id="contract-form" class="space-y-4">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('file').click()">
+                    <i class="fas fa-file-contract upload-icon"></i>
+                    <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: #64b5f6;">Drop your contract here</h3>
+                    <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+                        Supports PDF and DOCX files up to 10MB<br>
+                        <span style="font-size: 0.9rem; opacity: 0.8;">Legal • HR • Real Estate • Business Contracts</span>
+                    </p>
+                    <label for="file" class="file-input-label">
+                        <i class="fas fa-folder-open" style="margin-right: 0.5rem;"></i>
+                        Choose Contract
+                    </label>
+                    <input id="file" type="file" name="file" accept=".pdf,.docx" required class="file-input">
+                </div>
+
+                <div class="file-info" id="fileInfo">
+                    <div class="file-details">
+                        <i class="fas fa-file-contract"></i>
+                        <div>
+                            <div id="fileName" style="font-weight: 600;"></div>
+                            <div id="fileSize" style="font-size: 0.9rem; opacity: 0.8;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="submit" class="analyze-button" id="analyzeBtn" disabled>
+                        <i class="fas fa-search"></i>
+                        Analyze Contract
+                    </button>
+                </div>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color: #64b5f6; font-weight: 600;">Analyzing contract...</p>
+                <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; margin-top: 0.5rem;">
+                    Our AI is examining clauses, risks, and obligations
+                </p>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card" id="results" style="display: none; animation-delay: 0.4s;">
+            <div class="card-header">
+                <i class="fas fa-chart-bar card-icon"></i>
+                <h2 class="card-title">Contract Analysis Results</h2>
+            </div>
+            
+            <div class="results-grid">
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-list-alt"></i>
+                        Key Clauses
+                    </h3>
+                    <div class="result-content" id="keyClauses">
+                        <!-- Key clauses will be populated here -->
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-tasks"></i>
+                        Obligations
+                    </h3>
+                    <div class="result-content" id="obligations">
+                        <!-- Obligations will be populated here -->
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Risky Terms
+                    </h3>
+                    <div class="result-content" id="riskyTerms">
+                        <!-- Risky terms will be populated here -->
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-dollar-sign"></i>
+                        Payment Terms
+                    </h3>
+                    <div class="result-content" id="paymentTerms">
+                        <!-- Payment terms will be populated here -->
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3 class="result-title">
+                        <i class="fas fa-handshake"></i>
+                        Negotiation Points
+                    </h3>
+                    <div class="result-content" id="negotiationPoints">
+                        <!-- Negotiation points will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="analyze-button" onclick="downloadReport()">
+                    <i class="fas fa-download"></i>
+                    Download Report
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 DocuMind AI. All rights reserved. | Powered by Advanced AI Technology</p>
+        </div>
+    </footer>
+
+    <!-- Chatbot iframe -->
+    <iframe id="chatbot-iframe" src="/chat"></iframe>
+
+    <!-- Chatbot toggle button -->
+    <div id="chatbot-toggle-btn" title="Chat with AI">💭</div>
+
+    <script>
+        // File handling
+        const fileInput = document.getElementById('file');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInfo = document.getElementById('fileInfo');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const form = document.getElementById('contract-form');
+        const resultsDiv = document.getElementById('results');
+        const loadingDiv = document.getElementById('loading');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            
+            fileInfo.classList.add('active');
+            analyzeBtn.disabled = false;
+            
+            fileInfo.classList.add('success-animation');
+            setTimeout(() => {
+                fileInfo.classList.remove('success-animation');
+            }, 600);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            loadingDiv.classList.add('active');
+            resultsDiv.style.display = 'none';
+            analyzeBtn.disabled = true;
+
+            try {
+                const res = await fetch('/analyze_contract', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                loadingDiv.classList.remove('active');
+
+                if (res.ok) {
+                    displayResults(data);
+                } else {
+                    alert(`Error: ${data.detail}`);
+                }
+            } catch (err) {
+                loadingDiv.classList.remove('active');
+                alert(`Unexpected error: ${err.message}`);
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            // Helper function to render items with markdown support
+            const renderItems = (items) => {
+                if (!items || items.length === 0) {
+                    return '<p style="color: #4ade80;">No items identified</p>';
+                }
+                const markdownText = items.join('\n\n');
+                return marked.parse(markdownText);
+            };
+
+            // Populate results
+            document.getElementById('keyClauses').innerHTML = renderItems(data.key_clauses);
+            document.getElementById('obligations').innerHTML = renderItems(data.obligations);
+            document.getElementById('riskyTerms').innerHTML = renderItems(data.risky_terms);
+            document.getElementById('paymentTerms').innerHTML = renderItems(data.payment_terms);
+            document.getElementById('negotiationPoints').innerHTML = renderItems(data.negotiation_points);
+
+            // Show results
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function downloadReport() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('jsPDF library not loaded properly.');
+                return;
+            }
+
+            const doc = new window.jspdf.jsPDF();
+            const margin = 15;
+            const maxWidth = 180;
+            let y = margin;
+
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(100, 181, 246);
+            doc.text('DocuMind AI', margin, y);
+            y += 10;
+
+            doc.setFontSize(18);
+            doc.text('Contract Analysis Report', margin, y);
+            y += 15;
+
+            // File info
+            const fileName = document.getElementById('fileName').textContent || 'Unknown Contract';
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Contract: ${fileName}`, margin, y);
+            y += 15;
+
+            // Helper function to add section
+            function addSection(title, elementId) {
+                doc.setFontSize(14);
+                doc.setTextColor(100, 181, 246);
+                doc.text(title, margin, y);
+                y += 8;
+
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                
+                const element = document.getElementById(elementId);
+                const text = element.textContent || 'No information available';
+                const lines = doc.splitTextToSize(text, maxWidth);
+                doc.text(lines, margin, y);
+                y += lines.length * 7 + 10;
+
+                // Check if we need a new page
+                if (y > 250) {
+                    doc.addPage();
+                    y = margin;
+                }
+            }
+
+            // Add all sections
+            addSection('Key Clauses', 'keyClauses');
+            addSection('Obligations', 'obligations');
+            addSection('Risky Terms', 'riskyTerms');
+            addSection('Payment Terms', 'paymentTerms');
+            addSection('Negotiation Points', 'negotiationPoints');
+
+            // Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generated by DocuMind AI | © 2024', margin, pageHeight - margin);
+
+            doc.save(`DocuMind_Contract_Analysis_${fileName.replace(/\.[^/.]+$/, "")}_Report.pdf`);
+        }
+
+        // Chatbot functionality
+        const chatbotBtn = document.getElementById('chatbot-toggle-btn');
+        const chatbotIframe = document.getElementById('chatbot-iframe');
+        let chatbotVisible = false;
+        let wsClosed = false;
+
+        window.addEventListener("message", (event) => {
+            if (event.data === "ws_closed") {
+                wsClosed = true;
+            }
+        });
+
+        chatbotBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (chatbotVisible) {
+                chatbotIframe.style.display = "none";
+            } else {
+                if (wsClosed) {
+                    chatbotIframe.src = "/chat";
+                    wsClosed = false;
+                }
+                chatbotIframe.style.display = "block";
+            }
+            chatbotVisible = !chatbotVisible;
+        });
+
+        window.addEventListener("click", (event) => {
+            const isClickInsideIframe = chatbotIframe.contains(event.target);
+            const isClickOnButton = chatbotBtn.contains(event.target);
+
+            if (chatbotVisible && !isClickInsideIframe && !isClickOnButton) {
+                chatbotIframe.style.display = "none";
+                chatbotVisible = false;
+            }
+        });
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Parallax background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.bg-animation');
+            if (parallax) {
+                const speed = scrolled * 0.5;
+                parallax.style.transform = `translateY(${speed}px)`;
+            }
+        });
+    </script>
+</body>
+</html>
