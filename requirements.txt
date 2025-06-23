@@ -1,0 +1,16 @@
+Flask
+flask-cors
+flask-socketio
+eventlet
+langchain
+langchain-openai
+langchain-google-genai
+pydantic
+art
+pdfminer.six
+python-docx
+pandas
+deep-translator
+pytesseract
+Pillow
+openpyxl
