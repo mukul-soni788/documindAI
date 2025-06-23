@@ -25,7 +25,7 @@ Supports PDF, DOCX, TXT, CSV, Excel, and image-based document analysis, translat
 
 2. **Install dependencies**  
    ```
-   pip install -r req.txt
+   pip install -r requirements.txt
    ```
 
 3. **Set up Tesseract OCR**  
