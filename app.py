@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, redirect
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, disconnect
 from werkzeug.utils import secure_filename
@@ -15,6 +15,20 @@ from art import text2art
 from pdfminer.high_level import extract_text as extract_pdf_text
 from docx import Document
 import pandas as pd
+from deep_translator import GoogleTranslator
+import pytesseract
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
+from authlib.integrations.flask_client import OAuth
+from urllib.parse import urlparse, urljoin
+import smtplib
+from email.message import EmailMessage
+import secrets
+from datetime import datetime, timedelta
+from functools import wraps
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +42,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Set API keys
 os.environ["GOOGLE_API_KEY"] = "AIzaSyCt7cnq5RCSdr0Ofb8qTY-1lis69pKGfDo"
 os.environ["OPENROUTER_API_KEY"] = "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"
+
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-default-dev-secret-key')
+
 
 # Initialize Google Gemini model
 logger.info("Initializing Google Gemini model...")
@@ -110,8 +127,40 @@ def extract_text_from_excel(file) -> str:
 
 
 
+def check_token_status(view_func):
+    """
+    Flask decorator to check if the Authorization token is valid and active using raw SQL.
+    Usage: @check_token_status
+    """
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        token = request.headers.get('Authorization') or request.cookies.get('token')
+        if not token:
+            return render_template('auth.html')
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT user_id, active_status, expired_at FROM login_info WHERE token=%s', (token,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            if not row:
+                return render_template('auth.html')
+            user_id, active_status, expired_at = row
+            if active_status != 1:
+                return render_template('auth.html')
+            if expired_at and datetime.utcnow() > expired_at:
+                return render_template('auth.html')
+            # Optionally, set user_id in g for downstream use
+            return view_func(*args, **kwargs)
+        except Exception as e:
+            return render_template('auth.html')
+    return wrapper
+
+
 # Routes
 @app.route("/chat/")
+@check_token_status
 def get_home():
     return render_template("index.html")
 
@@ -123,7 +172,12 @@ def portfolio():
 def base():
     return render_template("base.html")
 
+@app.route("/login")
+def login():
+    return render_template("auth.html")
+
 @app.route("/document", endpoint="document")
+@check_token_status
 def get_document():
     return render_template("document.html")
 
@@ -132,6 +186,7 @@ def about():
     return render_template('about.html')
 
 @app.route('/contact')
+@check_token_status
 def contact():
     return render_template('contact.html')
 
@@ -140,7 +195,13 @@ def pricing():
     return render_template('pricing.html')
 
 
+@app.route('/profile')
+@check_token_status
+def profile():
+    return render_template('profile.html')
+
 @app.route("/analyze", methods=["POST"])
+@check_token_status
 def analyze_document():
     if 'file' not in request.files:
         return jsonify({"detail": "No file part"}), 400
@@ -212,10 +273,12 @@ def analyze_document():
 
 
 @app.route("/resume-match", endpoint="resume_match")
+@check_token_status
 def resume_match_page():
     return render_template("resume_match.html")
 
 @app.route("/analyze-resume", methods=["POST"])
+@check_token_status
 def analyze_resume():
     try:
         # Get resume
@@ -297,10 +360,12 @@ def analyze_resume():
         return jsonify({"detail": f"Error: {str(e)}"}), 500
 
 @app.route("/contract-analyzer", endpoint="contract_analyzer")
+@check_token_status
 def contract_analyzer():
     return render_template("contract_analyzer.html")
 
 @app.route("/analyze_contract", methods=["POST"])
+@check_token_status
 def analyze_contract():
     if 'file' not in request.files:
         return jsonify({"detail": "No file part"}), 400
@@ -384,13 +449,14 @@ def split_text(text, max_length=5000):
 
 
 @app.route("/translate-doc", endpoint="translate_doc")
+@check_token_status
 def translate_doc_page():
     return render_template("translate.html")
 
 
-from deep_translator import GoogleTranslator
 
 @app.route("/translate", methods=["POST"])
+@check_token_status
 def translate_and_analyze():
     if 'file' not in request.files:
         return jsonify({"detail": "No file part"}), 400
@@ -462,6 +528,7 @@ def translate_and_analyze():
 
 
 @app.route("/ebook-to-lessons", methods=["GET", "POST"], endpoint="ebook_to_lessons")
+@check_token_status
 def ebook_to_lessons():
     if request.method == "POST":
         if 'file' not in request.files:
@@ -552,11 +619,13 @@ def ebook_to_lessons():
 
 # Route to serve Business Report Analyzer UI
 @app.route("/business-report", endpoint="business_report")
+@check_token_status
 def business_report():
     return render_template("business_report.html")
 
 # API endpoint to analyze uploaded financial/marketing report
 @app.route("/analyze-business-report", methods=["POST"])
+@check_token_status
 def analyze_business_report():
     if 'file' not in request.files:
         return jsonify({"detail": "No file part"}), 400
@@ -636,11 +705,13 @@ def analyze_business_report():
 
 
 @app.route("/transcript", endpoint="transcript")
+@check_token_status
 def transcript_page():
     return render_template("transcript.html")
 
 
 @app.route("/analyze-transcript", methods=["POST"])
+@check_token_status
 def analyze_transcript():
     if 'file' not in request.files:
         return jsonify({"detail": "No file uploaded"}), 400
@@ -694,7 +765,7 @@ def analyze_transcript():
         ### Constraints:
         - Do not return any markdown, bullet points, or formatting outside the JSON structure.
         - Ensure the JSON is valid and directly parsable.
-        - Avoid hallucinating information that isn’t in the transcript.
+        - Avoid hallucinating information that isn't in the transcript.
         - If any detail (e.g., person or deadline) is not mentioned, use the default values provided above.
         """
 
@@ -714,6 +785,7 @@ def analyze_transcript():
 
 
 @app.route("/invoice", methods=["GET", "POST"], endpoint="invoice")
+@check_token_status
 def upload_invoice():
     if request.method == "POST":
         if 'file' not in request.files:
@@ -734,7 +806,6 @@ def upload_invoice():
                 from pdfminer.high_level import extract_text
                 extracted_text = extract_text(save_path)
             else:
-                import pytesseract
                 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
                 # pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
                 from PIL import Image
@@ -849,6 +920,397 @@ def handle_message(message):
         emit('message', {"sender": "ai", "message": response.strip()})
     except Exception as e:
         emit('message', {"sender": "system", "message": f"Error: {str(e)}"})
+
+# Database config
+DB_NAME = os.environ.get('DATABASE_NAME', 'docuai')
+DB_USER = os.environ.get('DATABASE_USER', 'postgres')
+DB_PASSWORD = os.environ.get('DATABASE_PASSWORD', 'Root#12345')
+DB_HOST = os.environ.get('DATABASE_HOST', 'localhost')
+DB_PORT = os.environ.get('DATABASE_PORT', '5432')
+
+def get_db_connection():
+    conn = psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT
+    )
+    return conn
+
+# --- AUTH API ENDPOINTS ---
+from flask import session
+
+def send_verification_email(to_email, token):
+    EMAIL_USER = os.environ.get('EMAIL_USER')
+    EMAIL_PASS = os.environ.get('EMAIL_PASS')
+    if not EMAIL_USER or not EMAIL_PASS:
+        logger.error('SMTP credentials not set')
+        return False
+    msg = EmailMessage()
+    msg['Subject'] = 'Verify your email for DocuMind AI'
+    msg['From'] = EMAIL_USER
+    msg['To'] = to_email
+    verify_url = f"{request.url_root.rstrip('/')}/verify-email/{token}"
+    msg.set_content(f"""
+    Welcome to DocuMind AI!
+
+    Please verify your email address by clicking the link below:
+    {verify_url}
+
+    If you did not sign up, you can ignore this email.
+    """)
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+        logger.info(f"Verification email sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send verification email: {str(e)}")
+        return False
+
+@app.route('/verify-email/<token>')
+def verify_email(token):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, verification_token_expiry FROM users WHERE verification_token=%s', (token,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return 'Invalid or expired verification link.', 400
+        user_id, expiry = row
+        if expiry and datetime.utcnow() > expiry:
+            cur.close(); conn.close()
+            return 'Verification link has expired.', 400
+        cur.execute('UPDATE users SET is_verified=TRUE, verification_token=NULL, verification_token_expiry=NULL WHERE id=%s', (user_id,))
+        conn.commit()
+        cur.close(); conn.close()
+        return 'Email verified! You can now log in.'
+    except Exception as e:
+        logger.error(f"Email verification error: {str(e)}")
+        return 'Verification failed.', 500
+
+@app.route('/api/signup', methods=['POST'])
+def api_signup():
+    data = request.get_json()
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+    if not all([name, email, password]):
+        return jsonify({'detail': 'Missing required fields'}), 400
+    hashed_pw = generate_password_hash(password)
+    token = secrets.token_urlsafe(32)
+    expiry = datetime.utcnow() + timedelta(hours=24)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM users WHERE email=%s', (email,))
+        if cur.fetchone():
+            return jsonify({'detail': 'Email already registered'}), 409
+        cur.execute('''INSERT INTO users (full_name, email, password, is_verified, verification_token, verification_token_expiry) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id''',
+                    (name, email, hashed_pw, False, token, expiry))
+        user_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        send_verification_email(email, token)
+        return jsonify({'detail': 'Signup successful. Please check your email to verify your account.', 'user_id': user_id}), 201
+    except Exception as e:
+        logger.error(f"Signup error: {str(e)}")
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    if not all([email, password]):
+        return jsonify({'detail': 'Missing required fields'}), 400
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM users WHERE email=%s', (email,))
+        user = cur.fetchone()
+        if not user or not user['password']:
+            cur.close(); conn.close()
+            return jsonify({'detail': 'Invalid credentials'}), 401
+        if not check_password_hash(user['password'], password):
+            cur.close(); conn.close()
+            return jsonify({'detail': 'Invalid credentials'}), 401
+        if not user['is_verified']:
+            cur.close(); conn.close()
+            return jsonify({'detail': 'Please verify your email before logging in.'}), 403
+        # Generate token
+        token = secrets.token_urlsafe(32)
+        user_id = user['id']
+        created_at = datetime.utcnow()
+        expired_at = created_at + timedelta(days=7)  # Token valid for 7 days
+        # Store token in login_info
+        cur2 = conn.cursor()
+        cur2.execute('''INSERT INTO login_info (user_id, token, active_status, created_at, expired_at) VALUES (%s, %s, %s, %s, %s)''',
+                    (user_id, token, 1, created_at, expired_at))
+        conn.commit()
+        cur2.close()
+        cur.close()
+        conn.close()
+        return jsonify({'detail': 'Login successful', 'token': token, 'user': {'id': user['id'], 'full_name': user['full_name'], 'email': user['email'], 'avatar_url': user.get('avatar_url')}})
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/logout', methods=['POST'])
+@check_token_status
+def api_logout():
+    token = request.headers.get('Authorization')
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('UPDATE login_info SET active_status=0, expired_at=%s WHERE token=%s', (datetime.utcnow(), token))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'detail': 'Logged out successfully.'})
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/change-password', methods=['POST'])
+@check_token_status
+def api_change_password():
+    token = request.headers.get('Authorization') or request.cookies.get('token')
+    data = request.get_json()
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    confirm_password = data.get('confirm_password')
+    if not all([current_password, new_password, confirm_password]):
+        return jsonify({'detail': 'All fields are required.'}), 400
+    if new_password != confirm_password:
+        return jsonify({'detail': 'New password and confirm password do not match.'}), 400
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # Get user_id from token
+        cur.execute('SELECT user_id FROM login_info WHERE token=%s AND active_status=1', (token,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'detail': 'Invalid or expired token.'}), 401
+        user_id = row['user_id']
+        # Get current password hash
+        cur.execute('SELECT password FROM users WHERE id=%s', (user_id,))
+        user = cur.fetchone()
+        if not user or not user['password']:
+            cur.close(); conn.close()
+            return jsonify({'detail': 'User not found.'}), 404
+        if not check_password_hash(user['password'], current_password):
+            cur.close(); conn.close()
+            return jsonify({'detail': 'Current password is incorrect.'}), 400
+        # Update password
+        new_hash = generate_password_hash(new_password)
+        cur.execute('UPDATE users SET password=%s WHERE id=%s', (new_hash, user_id))
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'detail': 'Password changed successfully.'})
+    except Exception as e:
+        logger.error(f"Change password error: {str(e)}")
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/delete-account', methods=['POST'])
+@check_token_status
+def api_delete_account():
+    token = request.headers.get('Authorization') or request.cookies.get('token')
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Get user_id from token
+        cur.execute('SELECT user_id FROM login_info WHERE token=%s AND active_status=1', (token,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            return jsonify({'detail': 'Invalid or expired token.'}), 401
+        user_id = row[0]
+        # Delete login_info entries
+        cur.execute('DELETE FROM login_info WHERE user_id=%s', (user_id,))
+        # Delete user
+        cur.execute('DELETE FROM users WHERE id=%s', (user_id,))
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'detail': 'Account deleted successfully.'})
+    except Exception as e:
+        logger.error(f"Delete account error: {str(e)}")
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+@app.route('/api/social-auth', methods=['POST'])
+def api_social_auth():
+    data = request.get_json()
+    provider = data.get('provider')
+    provider_id = data.get('provider_id')
+    email = data.get('email')
+    name = data.get('name')
+    avatar_url = data.get('avatar_url')
+    if not all([provider, provider_id, email, name]):
+        return jsonify({'detail': 'Missing required fields'}), 400
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # Check if user exists by provider_id
+        cur.execute('SELECT * FROM users WHERE provider=%s AND provider_id=%s', (provider, provider_id))
+        user = cur.fetchone()
+        if not user:
+            # If not, check by email (for first-time social login)
+            cur.execute('SELECT * FROM users WHERE email=%s', (email,))
+            user_by_email = cur.fetchone()
+            if user_by_email:
+                # Update user with provider info
+                cur.execute('''UPDATE users SET provider=%s, provider_id=%s, avatar_url=%s WHERE email=%s''',
+                            (provider, provider_id, avatar_url, email))
+                conn.commit()
+                user = user_by_email
+            else:
+                # Create new user
+                cur.execute('''INSERT INTO users (full_name, email, provider, provider_id, avatar_url, is_verified) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *''',
+                            (name, email, provider, provider_id, avatar_url, True))
+                user = cur.fetchone()
+                conn.commit()
+        # Generate token and insert into login_info
+        token = secrets.token_urlsafe(32)
+        user_id = user['id']
+        created_at = datetime.utcnow()
+        expired_at = created_at + timedelta(days=7)
+        cur2 = conn.cursor()
+        cur2.execute('''INSERT INTO login_info (user_id, token, active_status, created_at, expired_at) VALUES (%s, %s, %s, %s, %s)''',
+                    (user_id, token, 1, created_at, expired_at))
+        conn.commit()
+        cur2.close()
+        cur.close()
+        conn.close()
+        return jsonify({'detail': 'Social auth successful', 'token': token, 'user': {'id': user['id'], 'full_name': user['full_name'], 'email': user['email'], 'avatar_url': user.get('avatar_url')}})
+    except Exception as e:
+        logger.error(f"Social auth error: {str(e)}")
+        return jsonify({'detail': f'Error: {str(e)}'}), 500
+
+from dotenv import load_dotenv
+load_dotenv()
+# --- OAUTH CONFIG ---
+OAUTH_CLIENTS = {
+    'google': {
+        'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+        'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+        'api_base_url': 'https://www.googleapis.com/oauth2/v2/',
+        'access_token_url': 'https://oauth2.googleapis.com/token',
+        'authorize_url': 'https://accounts.google.com/o/oauth2/auth',
+        'userinfo_endpoint': 'https://www.googleapis.com/oauth2/v2/userinfo',
+        'client_kwargs': {'scope': 'openid email profile'},
+        'server_metadata_url': 'https://accounts.google.com/.well-known/openid-configuration'
+    }
+    # 'github': {
+    #     'client_id': os.environ.get('GITHUB_CLIENT_ID', ''),
+    #     'client_secret': os.environ.get('GITHUB_CLIENT_SECRET', ''),
+    #     'api_base_url': 'https://api.github.com/',
+    #     'access_token_url': 'https://github.com/login/oauth/access_token',
+    #     'authorize_url': 'https://github.com/login/oauth/authorize',
+    #     'userinfo_endpoint': 'https://api.github.com/user',
+    #     'client_kwargs': {'scope': 'user:email'}
+    # },
+    # 'microsoft': {
+    #     'client_id': os.environ.get('MICROSOFT_CLIENT_ID', ''),
+    #     'client_secret': os.environ.get('MICROSOFT_CLIENT_SECRET', ''),
+    #     'api_base_url': 'https://graph.microsoft.com/v1.0/',
+    #     'access_token_url': 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    #     'authorize_url': 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    #     'userinfo_endpoint': 'https://graph.microsoft.com/v1.0/me',
+    #     'client_kwargs': {'scope': 'User.Read openid email profile'}
+    # }
+}
+
+oauth = OAuth(app)
+for provider, conf in OAUTH_CLIENTS.items():
+    oauth.register(
+        name=provider,
+        client_id=conf['client_id'],
+        client_secret=conf['client_secret'],
+        access_token_url=conf['access_token_url'],
+        access_token_params=None,
+        authorize_url=conf['authorize_url'],
+        authorize_params=None,
+        api_base_url=conf['api_base_url'],
+        client_kwargs=conf['client_kwargs'],
+        server_metadata_url=conf.get('server_metadata_url')
+    )
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+@app.route('/login/<provider>')
+def oauth_login(provider):
+    if provider not in OAUTH_CLIENTS:
+        return 'Unsupported provider', 400
+    redirect_uri = url_for('oauth_callback', provider=provider, _external=True)
+    print("redirect_uri", redirect_uri)
+    return oauth.create_client(provider).authorize_redirect(redirect_uri)
+
+@app.route('/auth/<provider>/callback')
+def oauth_callback(provider):
+    if provider not in OAUTH_CLIENTS:
+        return 'Unsupported provider', 400
+    client = oauth.create_client(provider)
+    token = client.authorize_access_token()
+    print("token", token, client)
+    userinfo = None
+    if provider == 'google':
+        userinfo = client.get('userinfo').json()
+        provider_id = userinfo.get('id')
+        email = userinfo.get('email')
+        name = userinfo.get('name')
+        avatar_url = userinfo.get('picture')
+    elif provider == 'github':
+        userinfo = client.get('user').json()
+        provider_id = str(userinfo.get('id'))
+        email = userinfo.get('email')
+        if not email:
+            emails = client.get('user/emails').json()
+            for e in emails:
+                if e.get('primary') and e.get('verified'):
+                    email = e.get('email')
+                    break
+        name = userinfo.get('name') or userinfo.get('login')
+        avatar_url = userinfo.get('avatar_url')
+    elif provider == 'microsoft':
+        userinfo = client.get('me').json()
+        provider_id = userinfo.get('id')
+        email = userinfo.get('mail') or userinfo.get('userPrincipalName')
+        name = userinfo.get('displayName')
+        avatar_url = None
+    else:
+        return 'Unsupported provider', 400
+    # Call /api/social-auth to get token and user
+    import requests as pyrequests
+    try:
+        api_url = request.url_root.rstrip('/') + '/api/social-auth'
+        resp = pyrequests.post(api_url, json={
+            'provider': provider,
+            'provider_id': provider_id,
+            'email': email,
+            'name': name,
+            'avatar_url': avatar_url
+        })
+        if resp.ok:
+            data = resp.json()
+            token = data.get('token')
+            user = data.get('user')
+            if token and user:
+                import urllib.parse
+                user_str = urllib.parse.quote(json.dumps(user))
+                return redirect(f"/login?social=1&token={token}&user={user_str}")
+        # fallback: just go to dashboard
+        return redirect('/')
+    except Exception as e:
+        logger.error(f"OAuth error: {str(e)}")
+        return 'Authentication failed', 500
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8000)

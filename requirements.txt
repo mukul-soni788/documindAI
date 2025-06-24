@@ -14,4 +14,4 @@ deep-translator
 pytesseract
 Pillow
 openpyxl
-langchain_community
+authlib
