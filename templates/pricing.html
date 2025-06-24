@@ -648,6 +648,35 @@
                 padding: 2rem;
             }
         }
+
+        /* Profile icon and dropdown styles */
+        .profile-menu-container { position: relative; display: flex; align-items: center; margin-left: 2rem; }
+        .profile-icon {
+            width: 40px; height: 40px; background: #3b82f6; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; cursor: pointer; user-select: none; transition: box-shadow 0.2s; box-shadow: 0 2px 8px rgba(59,130,246,0.15); }
+        .profile-icon:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
+        .profile-dropdown { display: none; position: absolute; right: 0; top: 48px; background: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 1000; }
+        .profile-dropdown.show { display: block; }
+        .dropdown-item { display: flex; align-items: center; gap: 0.7em; color: #e2e8f0; padding: 0.9em 1.2em; text-decoration: none; font-size: 1rem; transition: background 0.2s; }
+        .dropdown-item:hover { background: #3b82f6; color: #fff; }
+
+        .theme-login-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.10);
+            margin-left: 1rem;
+        }
+        .theme-login-btn:hover {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            box-shadow: 0 6px 18px rgba(59,130,246,0.18);
+            transform: translateY(-2px) scale(1.04);
+        }
     </style>
 </head>
 <body>
@@ -668,6 +697,9 @@
                     <li><a href="/pricing" class="active">Pricing</a></li>
                 </ul>
             </nav>
+            <div class="profile-menu-container" id="profileMenuContainer">
+                <!-- Profile icon or login button will be rendered here by JS -->
+            </div>
         </div>
     </header>
 
@@ -708,7 +740,7 @@
                 <ul class="plan-features">
                     <li>
                         <i class="fas fa-check feature-icon"></i>
-                        <span>50 documents per month</span>
+                        <span>1 documents per month</span>
                     </li>
                     <li>
                         <i class="fas fa-check feature-icon"></i>
@@ -719,7 +751,7 @@
                         <span>PDF, DOCX, and image support</span>
                     </li>
                     <li>
-                        <i class="fas fa-check feature-icon"></i>
+                        <i class="fas fa-times feature-icon unavailable"></i>
                         <span>Email support</span>
                     </li>
                     <li>
@@ -740,14 +772,14 @@
                 <p class="plan-description">Ideal for growing businesses and teams that need advanced document processing</p>
                 <div class="plan-price">
                     <span class="price-currency">$</span>
-                    <span class="price-amount" id="pro-price">49</span>
+                    <span class="price-amount" id="pro-price">10</span>
                     <span class="price-period">/month</span>
-                    <span class="original-price" id="pro-original" style="display: none;">$59</span>
+                    <span class="original-price" id="pro-original" style="display: none;">$49</span>
                 </div>
                 <ul class="plan-features">
                     <li>
                         <i class="fas fa-check feature-icon"></i>
-                        <span>1,000 documents per month</span>
+                        <span>500 documents per month</span>
                     </li>
                     <li>
                         <i class="fas fa-check feature-icon"></i>
@@ -779,9 +811,9 @@
                 <p class="plan-description">For larger teams and organizations with high-volume document processing needs</p>
                 <div class="plan-price">
                     <span class="price-currency">$</span>
-                    <span class="price-amount" id="business-price">149</span>
+                    <span class="price-amount" id="business-price">49</span>
                     <span class="price-period">/month</span>
-                    <span class="original-price" id="business-original" style="display: none;">$179</span>
+                    <span class="original-price" id="business-original" style="display: none;">$99</span>
                 </div>
                 <ul class="plan-features">
                     <li>
@@ -941,8 +973,8 @@
         // Pricing data
         const pricingData = {
             starter: { monthly: 0, annual: 0 },
-            pro: { monthly: 49, annual: 39 },
-            business: { monthly: 149, annual: 119 }
+            pro: { monthly: 15, annual: 10 },
+            business: { monthly: 49, annual: 39 }
         };
 
         function toggleBilling() {
@@ -1049,6 +1081,69 @@
 
         // Initialize pricing
         updatePricing();
+
+        // Profile icon and dropdown logic
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(' ');
+            if (parts.length === 1) return parts[0][0].toUpperCase();
+            return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+        }
+        function showProfileIcon() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const icon = document.getElementById('profileIcon');
+            icon.textContent = getInitials(user.full_name || user.name || 'U');
+        }
+        function setupProfileDropdown() {
+            const icon = document.getElementById('profileIcon');
+            const dropdown = document.getElementById('profileDropdown');
+            icon.onclick = function(e) {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            };
+            document.addEventListener('click', function() {
+                dropdown.classList.remove('show');
+            });
+        }
+        function setupLogout() {
+            document.getElementById('logoutBtn').onclick = function(e) {
+                e.preventDefault();
+                fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': localStorage.getItem('token') }
+                }).finally(() => {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    document.cookie = 'token=; Max-Age=0; path=/;';
+                    window.location.href = '/login';
+                });
+            };
+        }
+        function renderProfileOrLogin() {
+            const container = document.getElementById('profileMenuContainer');
+            container.innerHTML = '';
+            if (localStorage.getItem('token')) {
+                container.innerHTML = `
+                    <div id="profileIcon" class="profile-icon"></div>
+                    <div id="profileDropdown" class="profile-dropdown">
+                        <a href="/profile" class="dropdown-item"><i class="fas fa-user"></i> Profile</a>
+                        <a href="#" class="dropdown-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                `;
+                showProfileIcon();
+                setupProfileDropdown();
+                setupLogout();
+            } else {
+                const btn = document.createElement('button');
+                btn.className = 'theme-login-btn';
+                btn.textContent = 'Login/Sign-Up';
+                btn.onclick = function() { window.location.href = '/login'; };
+                container.appendChild(btn);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            renderProfileOrLogin();
+        });
     </script>
 </body>
 </html>

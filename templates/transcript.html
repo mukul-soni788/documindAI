@@ -639,6 +639,16 @@
             gap: 0.5rem;
             margin-bottom: 1rem;
         }
+
+        /* Profile Icon and Dropdown Styles */
+        .profile-menu-container { position: relative; display: flex; align-items: center; margin-left: 2rem; }
+        .profile-icon {
+            width: 40px; height: 40px; background: #3b82f6; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; cursor: pointer; user-select: none; transition: box-shadow 0.2s; box-shadow: 0 2px 8px rgba(59,130,246,0.15); }
+        .profile-icon:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
+        .profile-dropdown { display: none; position: absolute; right: 0; top: 48px; background: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 1000; }
+        .profile-dropdown.show { display: block; }
+        .dropdown-item { display: flex; align-items: center; gap: 0.7em; color: #e2e8f0; padding: 0.9em 1.2em; text-decoration: none; font-size: 1rem; transition: background 0.2s; }
+        .dropdown-item:hover { background: #3b82f6; color: #fff; }
     </style>
 </head>
 <body>
@@ -660,6 +670,13 @@
                     <li><a href="/pricing">Pricing</a></li>
                 </ul>
             </nav>
+            <div class="profile-menu-container">
+                <div id="profileIcon" class="profile-icon"></div>
+                <div id="profileDropdown" class="profile-dropdown">
+                    <a href="/profile" class="dropdown-item"><i class="fas fa-user"></i> Profile</a>
+                    <a href="#" class="dropdown-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -880,7 +897,10 @@
             try {
                 const res = await fetch('/analyze-transcript', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'Authorization': localStorage.getItem('token')
+                    }
                 });
 
                 const data = await res.json();
@@ -1144,6 +1164,62 @@
                 const speed = scrolled * 0.5;
                 parallax.style.transform = `translateY(${speed}px)`;
             }
+        });
+
+        // Profile icon and dropdown logic
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(' ');
+            if (parts.length === 1) return parts[0][0].toUpperCase();
+            return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+        }
+        function showProfileIcon() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const icon = document.getElementById('profileIcon');
+            icon.textContent = getInitials(user.full_name || user.name || 'U');
+        }
+        function setupProfileDropdown() {
+            const icon = document.getElementById('profileIcon');
+            const dropdown = document.getElementById('profileDropdown');
+            icon.onclick = function(e) {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            };
+            document.addEventListener('click', function() {
+                dropdown.classList.remove('show');
+            });
+        }
+        function setupLogout() {
+            document.getElementById('logoutBtn').onclick = function(e) {
+                e.preventDefault();
+                fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': localStorage.getItem('token') }
+                }).finally(() => {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    document.cookie = 'token=; Max-Age=0; path=/;';
+                    window.location.href = '/login';
+                });
+            };
+        }
+        // Add styles for profile icon and dropdown
+        const style2 = document.createElement('style');
+        style2.textContent = `
+        .profile-menu-container { position: relative; display: flex; align-items: center; margin-left: 2rem; }
+        .profile-icon {
+            width: 40px; height: 40px; background: #3b82f6; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; cursor: pointer; user-select: none; transition: box-shadow 0.2s; box-shadow: 0 2px 8px rgba(59,130,246,0.15); }
+        .profile-icon:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
+        .profile-dropdown { display: none; position: absolute; right: 0; top: 48px; background: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 1000; }
+        .profile-dropdown.show { display: block; }
+        .dropdown-item { display: flex; align-items: center; gap: 0.7em; color: #e2e8f0; padding: 0.9em 1.2em; text-decoration: none; font-size: 1rem; transition: background 0.2s; }
+        .dropdown-item:hover { background: #3b82f6; color: #fff; }
+        `;
+        document.head.appendChild(style2);
+        document.addEventListener('DOMContentLoaded', function() {
+            showProfileIcon();
+            setupProfileDropdown();
+            setupLogout();
         });
     </script>
 </body>
