@@ -28,6 +28,9 @@ from email.message import EmailMessage
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
+import razorpay
+import hmac
+import hashlib
 
 
 # Set up logging
@@ -40,7 +43,7 @@ CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Set API keys
-os.environ["GOOGLE_API_KEY"] = "AIzaSyCt7cnq5RCSdr0Ofb8qTY-1lis69pKGfDo"
+os.environ["GOOGLE_API_KEY"] = "AIzaSyBjLGqvwA1rbGFkB1IrgCPEWtR0A9y61kU"
 os.environ["OPENROUTER_API_KEY"] = "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"
 
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-default-dev-secret-key')
@@ -1213,7 +1216,7 @@ OAUTH_CLIENTS = {
     #     'authorize_url': 'https://github.com/login/oauth/authorize',
     #     'userinfo_endpoint': 'https://api.github.com/user',
     #     'client_kwargs': {'scope': 'user:email'}
-    # },
+    # }
     # 'microsoft': {
     #     'client_id': os.environ.get('MICROSOFT_CLIENT_ID', ''),
     #     'client_secret': os.environ.get('MICROSOFT_CLIENT_SECRET', ''),
@@ -1311,6 +1314,217 @@ def oauth_callback(provider):
     except Exception as e:
         logger.error(f"OAuth error: {str(e)}")
         return 'Authentication failed', 500
+
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_Ug9xpT5DD3kxg7')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'phVCS9rHFDKBULRP0mWITi9F')
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+# Pricing data for amount calculation
+pricingData = {
+    'starter': { 'monthly': 0, 'annual': 0 },
+    'pro': { 'monthly': 15, 'annual': 10 },
+    'business': { 'monthly': 49, 'annual': 39 }
+}
+
+def create_transaction_logs_table():
+    """Create the transaction_logs table if it doesn't exist."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS transaction_logs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                plan_type VARCHAR(50) NOT NULL,
+                billing_period VARCHAR(20) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                currency VARCHAR(3) DEFAULT 'USD',
+                stripe_session_id VARCHAR(255),
+                stripe_payment_intent_id VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'pending',
+                metadata JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info("Transaction logs table created/verified successfully")
+    except Exception as e:
+        logger.error(f"Error creating transaction_logs table: {str(e)}")
+
+create_transaction_logs_table()
+
+def log_transaction(user_id, plan_type, billing_period, amount, stripe_session_id=None, status='pending', metadata=None):
+    """Log a transaction to the database."""
+    try:
+        # Convert metadata dict to JSON string if it's a dict
+        if metadata is not None and isinstance(metadata, dict):
+            metadata = json.dumps(metadata)
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO transaction_logs 
+            (user_id, plan_type, billing_period, amount, stripe_session_id, status, metadata)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (user_id, plan_type, billing_period, amount, stripe_session_id, status, metadata))
+        transaction_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info(f"Transaction logged with ID: {transaction_id}")
+        return transaction_id
+    except Exception as e:
+        logger.error(f"Error logging transaction: {str(e)}")
+        return None
+
+def update_transaction_status(stripe_session_id, status, stripe_payment_intent_id=None, metadata=None):
+    """Update transaction status after payment completion."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        update_fields = ['status = %s', 'updated_at = CURRENT_TIMESTAMP']
+        params = [status]
+        
+        if stripe_payment_intent_id:
+            update_fields.append('stripe_payment_intent_id = %s')
+            params.append(stripe_payment_intent_id)
+        
+        if metadata:
+            update_fields.append('metadata = metadata || %s')
+            params.append(json.dumps(metadata))
+        
+        params.append(stripe_session_id)
+        
+        cur.execute(f'''
+            UPDATE transaction_logs 
+            SET {', '.join(update_fields)}
+            WHERE stripe_session_id = %s
+        ''', params)
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info(f"Transaction status updated to {status} for session {stripe_session_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Error updating transaction status: {str(e)}")
+        return False
+
+@app.route('/api/create-razorpay-order', methods=['POST'])
+@check_token_status
+def create_razorpay_order():
+    data = request.get_json()
+    plan = data.get('plan')
+    period = data.get('period')
+    amount_usd = data.get('amount_usd')
+    amount_inr = data.get('amount_inr')
+    is_yearly = data.get('is_yearly', False)
+    
+    if plan not in pricingData or period not in pricingData[plan]:
+        return jsonify({'detail': 'Invalid plan or period'}), 400
+
+    # Use the converted INR amount from frontend, or fallback to backend calculation
+    if amount_inr is not None:
+        amount = int(amount_inr)  # Frontend already converts to paise
+    else:
+        # Fallback calculation (keeping original logic as backup)
+        usd_amount = pricingData[plan][period]
+        if is_yearly:
+            usd_amount *= 12  # Multiply by 12 for yearly billing
+        # Convert USD to INR (approximate rate)
+        usd_to_inr_rate = 83.5
+        amount = int(usd_amount * usd_to_inr_rate * 100)  # Convert to paise
+    
+    currency = 'INR'
+    receipt = f"{plan}_{period}_{secrets.token_hex(8)}"
+    print(f"Creating order: plan={plan}, period={period}, amount={amount}, is_yearly={is_yearly}")
+
+    # Get user info from token
+    token = request.headers.get('Authorization') or request.cookies.get('token')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT u.id, u.email FROM users u JOIN login_info l ON u.id = l.user_id WHERE l.token=%s', (token,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    if not row:
+        return jsonify({'detail': 'User not found'}), 404
+    print("row", row)
+    user_id, customer_email = row
+
+    # Create Razorpay order
+    order = razorpay_client.order.create({
+        'amount': amount,
+        'currency': currency,
+        'receipt': receipt,
+        'payment_capture': 1
+    })
+
+    print(order)
+
+    # Log the transaction with USD amount for reference
+    transaction_id = log_transaction(
+        user_id=user_id,
+        plan_type=plan,
+        billing_period=period,
+        amount=amount_usd if amount_usd is not None else pricingData[plan][period],
+        stripe_session_id=order['id'],
+        status='created',
+        metadata={
+            'plan_name': plan.title(),
+            'period_name': period.title(),
+            'amount_usd': amount_usd,
+            'amount_inr_paise': amount,
+            'is_yearly': is_yearly,
+            'currency': currency
+        }
+    )
+
+    return jsonify({
+        'order_id': order['id'],
+        'amount': amount,
+        'currency': currency,
+        'key_id': RAZORPAY_KEY_ID,
+        'customer_email': customer_email,
+        'transaction_id': transaction_id
+    })
+
+@app.route('/policy')
+def policy():
+    return render_template('policy.html')
+
+@app.route('/api/razorpay-webhook', methods=['POST'])
+def razorpay_webhook():
+    payload = request.get_data()
+    signature = request.headers.get('X-Razorpay-Signature')
+    webhook_secret = os.environ.get('RAZORPAY_WEBHOOK_SECRET', 'webhook')
+
+    try:
+        generated_signature = hmac.new(
+            webhook_secret.encode('utf-8'),
+            msg=payload,
+            digestmod=hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(generated_signature, signature):
+            raise ValueError("Invalid webhook signature")
+        event = request.json
+        if event['event'] == 'payment.captured':
+            payment = event['payload']['payment']['entity']
+            order_id = payment['order_id']
+            payment_id = payment['id']
+            # Update transaction status
+            update_transaction_status(
+                stripe_session_id=order_id,  # Rename this field to razorpay_order_id in your DB for clarity
+                status='completed',
+                stripe_payment_intent_id=payment_id,
+                metadata={'razorpay_payment_id': payment_id}
+            )
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f"Razorpay webhook error: {str(e)}")
+        return jsonify({'detail': 'Webhook verification failed'}), 400
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8000)
